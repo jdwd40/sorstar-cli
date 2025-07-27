@@ -24,6 +24,9 @@ import {
   displaySuccess, 
   displayError, 
   displayWarning,
+  displayNavigationHelp,
+  addBackOption,
+  addCancelOption,
   icons 
 } from './utils/display.js';
 
@@ -36,6 +39,12 @@ program
 
 let currentUser = null;
 let currentGame = null;
+
+// Handle graceful exit
+process.on('SIGINT', () => {
+  console.log(chalk.cyan('\n\n🚀 Thanks for playing Sorstar! Safe travels, pilot!'));
+  process.exit(0);
+});
 
 const mainMenu = async () => {
   if (!currentUser) {
@@ -51,6 +60,7 @@ const mainMenu = async () => {
   }
 
   displayHeader(currentUser, currentGame);
+  displayNavigationHelp();
 
   const choices = [
     { name: `${icons.market} View Market Prices`, value: 'View Market Prices' },
@@ -180,6 +190,29 @@ const viewMarket = async () => {
   
   const prices = await getMarketPrices(currentGame.current_planet_id);
   displayMarketTable(prices, currentGame.planet_name);
+  
+  const { action } = await inquirer.prompt([
+    {
+      type: 'list',
+      name: 'action',
+      message: 'Market options:',
+      choices: addBackOption([
+        { name: `${icons.buy} Buy Commodities`, value: 'buy' },
+        { name: `${icons.sell} Sell Commodities`, value: 'sell' }
+      ])
+    }
+  ]);
+
+  switch (action) {
+    case 'buy':
+      await buyMenu();
+      break;
+    case 'sell':
+      await sellMenu();
+      break;
+    case 'BACK':
+      return;
+  }
 };
 
 const viewCargo = async () => {
@@ -190,6 +223,25 @@ const viewCargo = async () => {
   const totalCargo = cargo.reduce((sum, item) => sum + item.quantity, 0);
   
   displayCargoTable(cargo, totalCargo, currentGame.cargo_capacity);
+  
+  if (cargo.length > 0) {
+    const { action } = await inquirer.prompt([
+      {
+        type: 'list',
+        name: 'action',
+        message: 'Cargo options:',
+        choices: addBackOption([
+          { name: `${icons.sell} Sell Commodities`, value: 'sell' }
+        ])
+      }
+    ]);
+
+    if (action === 'sell') {
+      await sellMenu();
+    }
+  } else {
+    await inquirer.prompt([{ type: 'input', name: 'continue', message: 'Press Enter to continue...' }]);
+  }
 };
 
 const buyMenu = async () => {
@@ -207,12 +259,16 @@ const buyMenu = async () => {
       type: 'list',
       name: 'commodity',
       message: `${icons.buy} What commodity would you like to purchase?`,
-      choices: prices.map(item => ({
+      choices: addCancelOption(prices.map(item => ({
         name: `${icons.credits} ${item.commodity_name} - ${item.buy_price} credits each (Stock: ${item.stock})`,
         value: item
-      }))
+      })))
     }
   ]);
+
+  if (commodity === 'CANCEL') {
+    return;
+  }
 
   const maxAffordable = Math.floor(currentGame.credits / commodity.buy_price);
   const maxSpace = currentGame.cargo_capacity - totalCargo;
@@ -227,10 +283,16 @@ const buyMenu = async () => {
     {
       type: 'number',
       name: 'quantity',
-      message: `${icons.cargo} How many units would you like to purchase? (Max: ${maxPurchase})`,
-      validate: (input) => input > 0 && input <= maxPurchase
+      message: `${icons.cargo} How many units would you like to purchase? (Max: ${maxPurchase}, 0 to cancel)`,
+      validate: (input) => input >= 0 && input <= maxPurchase,
+      default: 0
     }
   ]);
+
+  if (quantity === 0) {
+    displayInfo('Purchase cancelled.');
+    return;
+  }
 
   try {
     await buyCommodity(currentGame.id, commodity.commodity_id, quantity, commodity.buy_price);
@@ -254,12 +316,16 @@ const sellMenu = async () => {
       type: 'list',
       name: 'commodity',
       message: `${icons.sell} What commodity would you like to sell?`,
-      choices: cargo.map(item => ({
+      choices: addCancelOption(cargo.map(item => ({
         name: `${icons.cargo} ${item.commodity_name} - ${item.quantity} units`,
         value: item
-      }))
+      })))
     }
   ]);
+
+  if (commodity === 'CANCEL') {
+    return;
+  }
 
   const prices = await getMarketPrices(currentGame.current_planet_id);
   const marketPrice = prices.find(p => p.commodity_id === commodity.commodity_id);
@@ -268,10 +334,16 @@ const sellMenu = async () => {
     {
       type: 'number',
       name: 'quantity',
-      message: `${icons.credits} How many units would you like to sell? (Max: ${commodity.quantity}, Price: ${marketPrice.sell_price} each)`,
-      validate: (input) => input > 0 && input <= commodity.quantity
+      message: `${icons.credits} How many units would you like to sell? (Max: ${commodity.quantity}, Price: ${marketPrice.sell_price} each, 0 to cancel)`,
+      validate: (input) => input >= 0 && input <= commodity.quantity,
+      default: 0
     }
   ]);
+
+  if (quantity === 0) {
+    displayInfo('Sale cancelled.');
+    return;
+  }
 
   try {
     await sellCommodity(currentGame.id, commodity.commodity_id, quantity, marketPrice.sell_price);
@@ -291,12 +363,16 @@ const travelMenu = async () => {
       type: 'list',
       name: 'planet',
       message: `${icons.travel} Set destination coordinates:`,
-      choices: otherPlanets.map(p => ({
+      choices: addCancelOption(otherPlanets.map(p => ({
         name: `${icons.planet} ${p.name} - ${p.description}`,
         value: p
-      }))
+      })))
     }
   ]);
+
+  if (planet === 'CANCEL') {
+    return;
+  }
 
   await travelToPlanet(currentGame.id, planet.id);
   currentGame.current_planet_id = planet.id;
@@ -310,6 +386,8 @@ const viewStats = async () => {
   console.clear();
   displayHeader(currentUser, currentGame);
   displayGameStats(currentUser, currentGame);
+  
+  await inquirer.prompt([{ type: 'input', name: 'continue', message: 'Press Enter to continue...' }]);
 };
 
 program.action(async () => {

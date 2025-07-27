@@ -90,6 +90,8 @@ export const icons = {
   exit: '🚪',
   login: '🔑',
   create: '✨',
+  back: '🔙',
+  cancel: '❌',
   
   // Status
   success: '✅',
@@ -203,4 +205,17 @@ export const displayWarning = (message) => {
 
 export const displayInfo = (message) => {
   console.log(chalk.blue(`${icons.info} ${message}`));
+};
+
+export const addBackOption = (choices, backText = 'Back to Main Menu') => {
+  return [...choices, { name: `${icons.back} ${backText}`, value: 'BACK' }];
+};
+
+export const addCancelOption = (choices, cancelText = 'Cancel') => {
+  return [...choices, { name: `${icons.cancel} ${cancelText}`, value: 'CANCEL' }];
+};
+
+export const displayNavigationHelp = () => {
+  console.log();
+  console.log(chalk.gray(`💡 Navigation: Use arrow keys to select, Enter to confirm, Ctrl+C to exit`));
 };

@@ -208,11 +208,11 @@ export const displayInfo = (message) => {
 };
 
 export const addBackOption = (choices, backText = 'Back to Main Menu') => {
-  return [...choices, { name: `${icons.back} ${backText}`, value: 'BACK' }];
+  return [{ name: `${icons.back} ${backText}`, value: 'BACK' }, ...choices];
 };
 
 export const addCancelOption = (choices, cancelText = 'Cancel') => {
-  return [...choices, { name: `${icons.cancel} ${cancelText}`, value: 'CANCEL' }];
+  return [{ name: `${icons.cancel} ${cancelText}`, value: 'CANCEL' }, ...choices];
 };
 
 export const displayNavigationHelp = () => {

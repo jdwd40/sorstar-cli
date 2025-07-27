@@ -199,7 +199,7 @@ const viewMarket = async () => {
       choices: addBackOption([
         { name: `${icons.buy} Buy Commodities`, value: 'buy' },
         { name: `${icons.sell} Sell Commodities`, value: 'sell' }
-      ])
+      ], 'Back to Main Menu')
     }
   ]);
 
@@ -232,7 +232,7 @@ const viewCargo = async () => {
         message: 'Cargo options:',
         choices: addBackOption([
           { name: `${icons.sell} Sell Commodities`, value: 'sell' }
-        ])
+        ], 'Back to Main Menu')
       }
     ]);
 
@@ -245,12 +245,17 @@ const viewCargo = async () => {
 };
 
 const buyMenu = async () => {
+  console.clear();
+  displayHeader(currentUser, currentGame);
+  displayTitle('COMMODITY PURCHASE CENTER', icons.buy);
+  
   const prices = await getMarketPrices(currentGame.current_planet_id);
   const cargo = await getCargo(currentGame.id);
   const totalCargo = cargo.reduce((sum, item) => sum + item.quantity, 0);
   
   if (totalCargo >= currentGame.cargo_capacity) {
     displayError('Cargo hold is full! Cannot purchase additional commodities.');
+    await inquirer.prompt([{ type: 'input', name: 'continue', message: 'Press Enter to continue...' }]);
     return;
   }
 
@@ -259,14 +264,14 @@ const buyMenu = async () => {
       type: 'list',
       name: 'commodity',
       message: `${icons.buy} What commodity would you like to purchase?`,
-      choices: addCancelOption(prices.map(item => ({
+      choices: addBackOption(prices.map(item => ({
         name: `${icons.credits} ${item.commodity_name} - ${item.buy_price} credits each (Stock: ${item.stock})`,
         value: item
-      })))
+      })), 'Back to Main Menu')
     }
   ]);
 
-  if (commodity === 'CANCEL') {
+  if (commodity === 'BACK') {
     return;
   }
 
@@ -304,10 +309,15 @@ const buyMenu = async () => {
 };
 
 const sellMenu = async () => {
+  console.clear();
+  displayHeader(currentUser, currentGame);
+  displayTitle('COMMODITY SALES CENTER', icons.sell);
+  
   const cargo = await getCargo(currentGame.id);
   
   if (cargo.length === 0) {
     displayError('No cargo to sell! Your cargo hold is empty.');
+    await inquirer.prompt([{ type: 'input', name: 'continue', message: 'Press Enter to continue...' }]);
     return;
   }
 
@@ -316,14 +326,14 @@ const sellMenu = async () => {
       type: 'list',
       name: 'commodity',
       message: `${icons.sell} What commodity would you like to sell?`,
-      choices: addCancelOption(cargo.map(item => ({
+      choices: addBackOption(cargo.map(item => ({
         name: `${icons.cargo} ${item.commodity_name} - ${item.quantity} units`,
         value: item
-      })))
+      })), 'Back to Main Menu')
     }
   ]);
 
-  if (commodity === 'CANCEL') {
+  if (commodity === 'BACK') {
     return;
   }
 
@@ -355,6 +365,10 @@ const sellMenu = async () => {
 };
 
 const travelMenu = async () => {
+  console.clear();
+  displayHeader(currentUser, currentGame);
+  displayTitle('HYPERSPACE NAVIGATION CENTER', icons.travel);
+  
   const planets = await getPlanets();
   const otherPlanets = planets.filter(p => p.id !== currentGame.current_planet_id);
 
@@ -363,14 +377,14 @@ const travelMenu = async () => {
       type: 'list',
       name: 'planet',
       message: `${icons.travel} Set destination coordinates:`,
-      choices: addCancelOption(otherPlanets.map(p => ({
+      choices: addBackOption(otherPlanets.map(p => ({
         name: `${icons.planet} ${p.name} - ${p.description}`,
         value: p
-      })))
+      })), 'Back to Main Menu')
     }
   ]);
 
-  if (planet === 'CANCEL') {
+  if (planet === 'BACK') {
     return;
   }
 

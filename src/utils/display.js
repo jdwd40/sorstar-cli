@@ -119,13 +119,18 @@ export const displayHeader = (user, game) => {
   console.log(chalk.bold.cyan(ascii.logo));
   
   if (user && game) {
-    console.log(chalk.cyan('╔════════════════════════════════════════════════════════════════╗'));
-    console.log(chalk.cyan('║') + chalk.bold.green(` ${icons.user} Pilot: ${user.username}`.padEnd(50)) + 
-                chalk.cyan('║') + chalk.bold.yellow(` ${icons.credits} ${game.credits} Credits`.padEnd(11)) + chalk.cyan('║'));
-    console.log(chalk.cyan('║') + chalk.bold.blue(` ${icons.ship} Ship: ${game.ship_name}`.padEnd(50)) + 
-                chalk.cyan('║') + chalk.bold.magenta(` ${icons.turns} Turn ${game.turns_used}`.padEnd(11)) + chalk.cyan('║'));
-    console.log(chalk.cyan('║') + chalk.bold.white(` ${icons.location} Location: ${game.planet_name}`.padEnd(62)) + chalk.cyan('║'));
-    console.log(chalk.cyan('╚════════════════════════════════════════════════════════════════╝'));
+    // Define column widths for pilot info table
+    const headerWidth = 64; // Total width of the header box
+    const leftCol = 50;     // Left column width
+    const rightCol = 12;    // Right column width (total - left - 2 for borders)
+    
+    console.log(chalk.cyan('╔' + '═'.repeat(headerWidth) + '╗'));
+    console.log(chalk.cyan('║') + chalk.bold.green(` ${icons.user} Pilot: ${user.username}`.padEnd(leftCol)) + 
+                chalk.cyan('║') + chalk.bold.yellow(` ${icons.credits} ${game.credits} Credits`.padEnd(rightCol)) + chalk.cyan('║'));
+    console.log(chalk.cyan('║') + chalk.bold.blue(` ${icons.ship} Ship: ${game.ship_name}`.padEnd(leftCol)) + 
+                chalk.cyan('║') + chalk.bold.magenta(` ${icons.turns} Turn ${game.turns_used}`.padEnd(rightCol)) + chalk.cyan('║'));
+    console.log(chalk.cyan('║') + chalk.bold.white(` ${icons.location} Location: ${game.planet_name}`.padEnd(headerWidth)) + chalk.cyan('║'));
+    console.log(chalk.cyan('╚' + '═'.repeat(headerWidth) + '╝'));
   }
   console.log();
 };

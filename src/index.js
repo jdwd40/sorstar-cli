@@ -15,6 +15,17 @@ import {
   buyCommodity, 
   sellCommodity 
 } from './services/gameService.js';
+import { 
+  displayHeader, 
+  displayTitle, 
+  displayGameStats, 
+  displayMarketTable, 
+  displayCargoTable, 
+  displaySuccess, 
+  displayError, 
+  displayWarning,
+  icons 
+} from './utils/display.js';
 
 const program = new Command();
 
@@ -39,30 +50,23 @@ const mainMenu = async () => {
     currentGame = await getGameState(currentUser.id);
   }
 
-  console.clear();
-  console.log(chalk.cyan('=== SORSTAR TRADING GAME ==='));
-  console.log(chalk.green(`Welcome back, ${currentUser.username}!`));
-  console.log(chalk.yellow(`Ship: ${currentGame.ship_name}`));
-  console.log(chalk.yellow(`Location: ${currentGame.planet_name}`));
-  console.log(chalk.yellow(`Credits: ${currentGame.credits}`));
-  console.log(chalk.yellow(`Turns Used: ${currentGame.turns_used}`));
-  console.log();
+  displayHeader(currentUser, currentGame);
 
   const choices = [
-    'View Market Prices',
-    'View Cargo',
-    'Buy Commodities',
-    'Sell Commodities',
-    'Travel to Another Planet',
-    'View Game Stats',
-    'Exit Game'
+    { name: `${icons.market} View Market Prices`, value: 'View Market Prices' },
+    { name: `${icons.cargo} View Cargo Hold`, value: 'View Cargo' },
+    { name: `${icons.buy} Buy Commodities`, value: 'Buy Commodities' },
+    { name: `${icons.sell} Sell Commodities`, value: 'Sell Commodities' },
+    { name: `${icons.travel} Travel to Another Planet`, value: 'Travel to Another Planet' },
+    { name: `${icons.stats} View Game Statistics`, value: 'View Game Stats' },
+    { name: `${icons.exit} Exit Game`, value: 'Exit Game' }
   ];
 
   const { action } = await inquirer.prompt([
     {
       type: 'list',
       name: 'action',
-      message: 'What would you like to do?',
+      message: `${icons.ship} Command Center - What would you like to do?`,
       choices
     }
   ]);
@@ -87,7 +91,7 @@ const mainMenu = async () => {
       await viewStats();
       break;
     case 'Exit Game':
-      console.log(chalk.green('Thanks for playing Sorstar!'));
+      displaySuccess('Thanks for playing Sorstar! Safe travels, pilot! 🚀');
       process.exit(0);
   }
 
@@ -96,15 +100,19 @@ const mainMenu = async () => {
 };
 
 const authMenu = async () => {
-  console.clear();
-  console.log(chalk.cyan('=== SORSTAR TRADING GAME ==='));
+  displayHeader();
+  displayTitle('PILOT AUTHENTICATION CENTER', icons.login);
   
   const { action } = await inquirer.prompt([
     {
       type: 'list',
       name: 'action',
-      message: 'Welcome! Please choose an option:',
-      choices: ['Login', 'Create Account', 'Exit']
+      message: `${icons.user} Welcome, pilot! Please choose an option:`,
+      choices: [
+        { name: `${icons.login} Login to Existing Account`, value: 'Login' },
+        { name: `${icons.create} Create New Pilot Account`, value: 'Create Account' },
+        { name: `${icons.exit} Exit`, value: 'Exit' }
+      ]
     }
   ]);
 
@@ -113,96 +121,75 @@ const authMenu = async () => {
   }
 
   const { username, password } = await inquirer.prompt([
-    { type: 'input', name: 'username', message: 'Username:' },
-    { type: 'password', name: 'password', message: 'Password:' }
+    { type: 'input', name: 'username', message: `${icons.user} Enter your pilot name:` },
+    { type: 'password', name: 'password', message: `${icons.login} Enter your access code:` }
   ]);
 
   try {
     if (action === 'Create Account') {
       currentUser = await createUser(username, password);
-      console.log(chalk.green(`Account created successfully! Welcome, ${currentUser.username}!`));
+      displaySuccess(`Account created successfully! Welcome aboard, Commander ${currentUser.username}!`);
     } else {
       currentUser = await authenticateUser(username, password);
-      console.log(chalk.green(`Welcome back, ${currentUser.username}!`));
+      displaySuccess(`Welcome back, Commander ${currentUser.username}!`);
     }
     await inquirer.prompt([{ type: 'input', name: 'continue', message: 'Press Enter to continue...' }]);
   } catch (error) {
-    console.log(chalk.red(`Error: ${error.message}`));
+    displayError(`Authentication failed: ${error.message}`);
     await inquirer.prompt([{ type: 'input', name: 'continue', message: 'Press Enter to try again...' }]);
     await authMenu();
   }
 };
 
 const shipSelection = async () => {
-  console.clear();
-  console.log(chalk.cyan('=== SHIP SELECTION ==='));
-  console.log(chalk.yellow('Choose your starting ship:'));
+  displayHeader(currentUser);
+  displayTitle('STARSHIP SELECTION HANGAR', icons.ship);
+  console.log(chalk.yellow(`${icons.info} Choose your starting vessel, Commander:`));
+  console.log();
   
   const ships = await getShips();
   
   ships.forEach(ship => {
-    console.log(chalk.white(`${ship.name} - ${ship.cargo_capacity} cargo - ${ship.cost} credits`));
-    console.log(chalk.gray(`  ${ship.description}`));
+    console.log(chalk.bold.white(`${icons.ship} ${ship.name}`));
+    console.log(chalk.cyan(`   ${icons.cargo} Cargo: ${ship.cargo_capacity} units`));
+    console.log(chalk.yellow(`   ${icons.credits} Cost: ${ship.cost} credits`));
+    console.log(chalk.gray(`   📝 ${ship.description}`));
+    console.log();
   });
 
   const { selectedShip } = await inquirer.prompt([
     {
       type: 'list',
       name: 'selectedShip',
-      message: 'Select your ship:',
+      message: `${icons.ship} Select your starship:`,
       choices: ships.map(ship => ({
-        name: `${ship.name} (${ship.cargo_capacity} cargo, ${ship.cost} credits)`,
+        name: `${icons.ship} ${ship.name} (${ship.cargo_capacity} cargo, ${ship.cost} credits)`,
         value: ship.id
       }))
     }
   ]);
 
   await createGame(currentUser.id, selectedShip);
-  console.log(chalk.green('Game started! You begin at Terra Nova with 1000 credits.'));
-  await inquirer.prompt([{ type: 'input', name: 'continue', message: 'Press Enter to continue...' }]);
+  displaySuccess('Mission initiated! You begin at Terra Nova with 1000 credits. Good luck, pilot!');
+  await inquirer.prompt([{ type: 'input', name: 'continue', message: 'Press Enter to launch...' }]);
 };
 
 const viewMarket = async () => {
   console.clear();
-  console.log(chalk.cyan('=== MARKET PRICES ==='));
-  console.log(chalk.yellow(`Current Location: ${currentGame.planet_name}`));
-  console.log();
+  displayHeader(currentUser, currentGame);
   
   const prices = await getMarketPrices(currentGame.current_planet_id);
-  
-  console.log(chalk.white('Commodity'.padEnd(20) + 'Buy Price'.padEnd(12) + 'Sell Price'.padEnd(12) + 'Stock'));
-  console.log('-'.repeat(50));
-  
-  prices.forEach(item => {
-    console.log(
-      chalk.white(item.commodity_name.padEnd(20)) +
-      chalk.green(item.buy_price.toString().padEnd(12)) +
-      chalk.red(item.sell_price.toString().padEnd(12)) +
-      chalk.blue(item.stock.toString())
-    );
-  });
+  displayMarketTable(prices, currentGame.planet_name);
 };
 
 const viewCargo = async () => {
   console.clear();
-  console.log(chalk.cyan('=== CARGO HOLD ==='));
+  displayHeader(currentUser, currentGame);
   
   const cargo = await getCargo(currentGame.id);
   const totalCargo = cargo.reduce((sum, item) => sum + item.quantity, 0);
   
-  console.log(chalk.yellow(`Cargo Capacity: ${totalCargo}/${currentGame.cargo_capacity}`));
-  console.log();
-  
-  if (cargo.length === 0) {
-    console.log(chalk.gray('Cargo hold is empty.'));
-  } else {
-    console.log(chalk.white('Commodity'.padEnd(20) + 'Quantity'));
-    console.log('-'.repeat(30));
-    
-    cargo.forEach(item => {
-      console.log(chalk.white(item.commodity_name.padEnd(20) + item.quantity.toString()));
-    });
-  }
+  displayCargoTable(cargo, totalCargo, currentGame.cargo_capacity);
 };
 
 const buyMenu = async () => {
@@ -211,7 +198,7 @@ const buyMenu = async () => {
   const totalCargo = cargo.reduce((sum, item) => sum + item.quantity, 0);
   
   if (totalCargo >= currentGame.cargo_capacity) {
-    console.log(chalk.red('Cargo hold is full!'));
+    displayError('Cargo hold is full! Cannot purchase additional commodities.');
     return;
   }
 
@@ -219,9 +206,9 @@ const buyMenu = async () => {
     {
       type: 'list',
       name: 'commodity',
-      message: 'What would you like to buy?',
+      message: `${icons.buy} What commodity would you like to purchase?`,
       choices: prices.map(item => ({
-        name: `${item.commodity_name} - ${item.buy_price} credits each (Stock: ${item.stock})`,
+        name: `${icons.credits} ${item.commodity_name} - ${item.buy_price} credits each (Stock: ${item.stock})`,
         value: item
       }))
     }
@@ -232,7 +219,7 @@ const buyMenu = async () => {
   const maxPurchase = Math.min(maxAffordable, maxSpace, commodity.stock);
 
   if (maxPurchase <= 0) {
-    console.log(chalk.red('Cannot buy any of this commodity (insufficient credits, space, or stock).'));
+    displayError('Cannot buy any of this commodity (insufficient credits, space, or stock).');
     return;
   }
 
@@ -240,7 +227,7 @@ const buyMenu = async () => {
     {
       type: 'number',
       name: 'quantity',
-      message: `How many units? (Max: ${maxPurchase})`,
+      message: `${icons.cargo} How many units would you like to purchase? (Max: ${maxPurchase})`,
       validate: (input) => input > 0 && input <= maxPurchase
     }
   ]);
@@ -248,9 +235,9 @@ const buyMenu = async () => {
   try {
     await buyCommodity(currentGame.id, commodity.commodity_id, quantity, commodity.buy_price);
     currentGame.credits -= quantity * commodity.buy_price;
-    console.log(chalk.green(`Purchased ${quantity} units of ${commodity.commodity_name} for ${quantity * commodity.buy_price} credits.`));
+    displaySuccess(`Purchased ${quantity} units of ${commodity.commodity_name} for ${quantity * commodity.buy_price} credits.`);
   } catch (error) {
-    console.log(chalk.red(`Error: ${error.message}`));
+    displayError(`Transaction failed: ${error.message}`);
   }
 };
 
@@ -258,7 +245,7 @@ const sellMenu = async () => {
   const cargo = await getCargo(currentGame.id);
   
   if (cargo.length === 0) {
-    console.log(chalk.red('No cargo to sell!'));
+    displayError('No cargo to sell! Your cargo hold is empty.');
     return;
   }
 
@@ -266,9 +253,9 @@ const sellMenu = async () => {
     {
       type: 'list',
       name: 'commodity',
-      message: 'What would you like to sell?',
+      message: `${icons.sell} What commodity would you like to sell?`,
       choices: cargo.map(item => ({
-        name: `${item.commodity_name} - ${item.quantity} units`,
+        name: `${icons.cargo} ${item.commodity_name} - ${item.quantity} units`,
         value: item
       }))
     }
@@ -281,7 +268,7 @@ const sellMenu = async () => {
     {
       type: 'number',
       name: 'quantity',
-      message: `How many units? (Max: ${commodity.quantity}, Price: ${marketPrice.sell_price} each)`,
+      message: `${icons.credits} How many units would you like to sell? (Max: ${commodity.quantity}, Price: ${marketPrice.sell_price} each)`,
       validate: (input) => input > 0 && input <= commodity.quantity
     }
   ]);
@@ -289,9 +276,9 @@ const sellMenu = async () => {
   try {
     await sellCommodity(currentGame.id, commodity.commodity_id, quantity, marketPrice.sell_price);
     currentGame.credits += quantity * marketPrice.sell_price;
-    console.log(chalk.green(`Sold ${quantity} units of ${commodity.commodity_name} for ${quantity * marketPrice.sell_price} credits.`));
+    displaySuccess(`Sold ${quantity} units of ${commodity.commodity_name} for ${quantity * marketPrice.sell_price} credits.`);
   } catch (error) {
-    console.log(chalk.red(`Error: ${error.message}`));
+    displayError(`Transaction failed: ${error.message}`);
   }
 };
 
@@ -303,9 +290,9 @@ const travelMenu = async () => {
     {
       type: 'list',
       name: 'planet',
-      message: 'Where would you like to travel?',
+      message: `${icons.travel} Set destination coordinates:`,
       choices: otherPlanets.map(p => ({
-        name: `${p.name} - ${p.description}`,
+        name: `${icons.planet} ${p.name} - ${p.description}`,
         value: p
       }))
     }
@@ -316,18 +303,13 @@ const travelMenu = async () => {
   currentGame.planet_name = planet.name;
   currentGame.turns_used++;
   
-  console.log(chalk.green(`Traveled to ${planet.name}. Turn used.`));
+  displaySuccess(`Hyperspace jump complete! Arrived at ${planet.name}. Turn consumed.`);
 };
 
 const viewStats = async () => {
   console.clear();
-  console.log(chalk.cyan('=== GAME STATISTICS ==='));
-  console.log(chalk.yellow(`Player: ${currentUser.username}`));
-  console.log(chalk.yellow(`Ship: ${currentGame.ship_name}`));
-  console.log(chalk.yellow(`Current Location: ${currentGame.planet_name}`));
-  console.log(chalk.yellow(`Credits: ${currentGame.credits}`));
-  console.log(chalk.yellow(`Turns Used: ${currentGame.turns_used}`));
-  console.log(chalk.yellow(`Cargo Capacity: ${currentGame.cargo_capacity}`));
+  displayHeader(currentUser, currentGame);
+  displayGameStats(currentUser, currentGame);
 };
 
 program.action(async () => {

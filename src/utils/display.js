@@ -147,23 +147,31 @@ export const displayMarketTable = (prices, planetName) => {
   console.log(chalk.bold.yellow(`${icons.planet} Current Location: ${planetName}`));
   console.log();
   
-  console.log(chalk.cyan('╔══════════════════════╦═══════════╦═══════════╦═══════════╗'));
-  console.log(chalk.cyan('║') + chalk.bold.white(' Commodity'.padEnd(20)) + 
-              chalk.cyan('║') + chalk.bold.green(' Buy Price'.padEnd(9)) + 
-              chalk.cyan('║') + chalk.bold.red(' Sell Price'.padEnd(10)) + 
-              chalk.cyan('║') + chalk.bold.blue(' Stock'.padEnd(9)) + chalk.cyan('║'));
-  console.log(chalk.cyan('╠══════════════════════╬═══════════╬═══════════╬═══════════╣'));
+  // Define column widths (including space for content + padding)
+  const colWidths = {
+    commodity: 22,  // 22 chars for commodity name
+    buyPrice: 11,   // 11 chars for buy price  
+    sellPrice: 11,  // 11 chars for sell price
+    stock: 11       // 11 chars for stock
+  };
+  
+  console.log(chalk.cyan('╔' + '═'.repeat(colWidths.commodity) + '╦' + '═'.repeat(colWidths.buyPrice) + '╦' + '═'.repeat(colWidths.sellPrice) + '╦' + '═'.repeat(colWidths.stock) + '╗'));
+  console.log(chalk.cyan('║') + chalk.bold.white(' Commodity'.padEnd(colWidths.commodity)) + 
+              chalk.cyan('║') + chalk.bold.green(' Buy Price'.padEnd(colWidths.buyPrice)) + 
+              chalk.cyan('║') + chalk.bold.red(' Sell Price'.padEnd(colWidths.sellPrice)) + 
+              chalk.cyan('║') + chalk.bold.blue(' Stock'.padEnd(colWidths.stock)) + chalk.cyan('║'));
+  console.log(chalk.cyan('╠' + '═'.repeat(colWidths.commodity) + '╬' + '═'.repeat(colWidths.buyPrice) + '╬' + '═'.repeat(colWidths.sellPrice) + '╬' + '═'.repeat(colWidths.stock) + '╣'));
   
   prices.forEach(item => {
     console.log(
-      chalk.cyan('║') + chalk.white(` ${item.commodity_name}`.padEnd(20)) +
-      chalk.cyan('║') + chalk.green(` ${item.buy_price}`.padEnd(9)) +
-      chalk.cyan('║') + chalk.red(` ${item.sell_price}`.padEnd(10)) +
-      chalk.cyan('║') + chalk.blue(` ${item.stock}`.padEnd(9)) + chalk.cyan('║')
+      chalk.cyan('║') + chalk.white(` ${item.commodity_name}`.padEnd(colWidths.commodity)) +
+      chalk.cyan('║') + chalk.green(` ${item.buy_price}`.padEnd(colWidths.buyPrice)) +
+      chalk.cyan('║') + chalk.red(` ${item.sell_price}`.padEnd(colWidths.sellPrice)) +
+      chalk.cyan('║') + chalk.blue(` ${item.stock}`.padEnd(colWidths.stock)) + chalk.cyan('║')
     );
   });
   
-  console.log(chalk.cyan('╚══════════════════════╩═══════════╩═══════════╩═══════════╝'));
+  console.log(chalk.cyan('╚' + '═'.repeat(colWidths.commodity) + '╩' + '═'.repeat(colWidths.buyPrice) + '╩' + '═'.repeat(colWidths.sellPrice) + '╩' + '═'.repeat(colWidths.stock) + '╝'));
 };
 
 export const displayCargoTable = (cargo, totalCargo, capacity) => {
@@ -175,19 +183,25 @@ export const displayCargoTable = (cargo, totalCargo, capacity) => {
     console.log(chalk.cyan(ascii.cargo));
     console.log(chalk.gray('📭 Cargo hold is empty.'));
   } else {
-    console.log(chalk.cyan('╔══════════════════════╦═══════════╗'));
-    console.log(chalk.cyan('║') + chalk.bold.white(' Commodity'.padEnd(20)) + 
-                chalk.cyan('║') + chalk.bold.yellow(' Quantity'.padEnd(9)) + chalk.cyan('║'));
-    console.log(chalk.cyan('╠══════════════════════╬═══════════╣'));
+    // Define column widths for cargo table
+    const colWidths = {
+      commodity: 22,  // 22 chars for commodity name
+      quantity: 11    // 11 chars for quantity
+    };
+    
+    console.log(chalk.cyan('╔' + '═'.repeat(colWidths.commodity) + '╦' + '═'.repeat(colWidths.quantity) + '╗'));
+    console.log(chalk.cyan('║') + chalk.bold.white(' Commodity'.padEnd(colWidths.commodity)) + 
+                chalk.cyan('║') + chalk.bold.yellow(' Quantity'.padEnd(colWidths.quantity)) + chalk.cyan('║'));
+    console.log(chalk.cyan('╠' + '═'.repeat(colWidths.commodity) + '╬' + '═'.repeat(colWidths.quantity) + '╣'));
     
     cargo.forEach(item => {
       console.log(
-        chalk.cyan('║') + chalk.white(` ${item.commodity_name}`.padEnd(20)) +
-        chalk.cyan('║') + chalk.yellow(` ${item.quantity}`.padEnd(9)) + chalk.cyan('║')
+        chalk.cyan('║') + chalk.white(` ${item.commodity_name}`.padEnd(colWidths.commodity)) +
+        chalk.cyan('║') + chalk.yellow(` ${item.quantity}`.padEnd(colWidths.quantity)) + chalk.cyan('║')
       );
     });
     
-    console.log(chalk.cyan('╚══════════════════════╩═══════════╝'));
+    console.log(chalk.cyan('╚' + '═'.repeat(colWidths.commodity) + '╩' + '═'.repeat(colWidths.quantity) + '╝'));
   }
 };
 

@@ -81,6 +81,8 @@ const mainMenu = async () => {
     }
   ]);
 
+  let needsContinuePrompt = false;
+
   switch (action) {
     case 'View Market Prices':
       await viewMarket();
@@ -95,7 +97,7 @@ const mainMenu = async () => {
       await sellMenu();
       break;
     case 'Travel to Another Planet':
-      await travelMenu();
+      needsContinuePrompt = await travelMenu();
       break;
     case 'View Game Stats':
       await viewStats();
@@ -105,7 +107,9 @@ const mainMenu = async () => {
       process.exit(0);
   }
 
-  await inquirer.prompt([{ type: 'input', name: 'continue', message: 'Press Enter to continue...' }]);
+  if (needsContinuePrompt) {
+    await inquirer.prompt([{ type: 'input', name: 'continue', message: 'Press Enter to continue...' }]);
+  }
   await mainMenu();
 };
 
@@ -303,8 +307,10 @@ const buyMenu = async () => {
     await buyCommodity(currentGame.id, commodity.commodity_id, quantity, commodity.buy_price);
     currentGame.credits -= quantity * commodity.buy_price;
     displaySuccess(`Purchased ${quantity} units of ${commodity.commodity_name} for ${quantity * commodity.buy_price} credits.`);
+    await inquirer.prompt([{ type: 'input', name: 'continue', message: 'Press Enter to continue...' }]);
   } catch (error) {
     displayError(`Transaction failed: ${error.message}`);
+    await inquirer.prompt([{ type: 'input', name: 'continue', message: 'Press Enter to continue...' }]);
   }
 };
 
@@ -359,8 +365,10 @@ const sellMenu = async () => {
     await sellCommodity(currentGame.id, commodity.commodity_id, quantity, marketPrice.sell_price);
     currentGame.credits += quantity * marketPrice.sell_price;
     displaySuccess(`Sold ${quantity} units of ${commodity.commodity_name} for ${quantity * marketPrice.sell_price} credits.`);
+    await inquirer.prompt([{ type: 'input', name: 'continue', message: 'Press Enter to continue...' }]);
   } catch (error) {
     displayError(`Transaction failed: ${error.message}`);
+    await inquirer.prompt([{ type: 'input', name: 'continue', message: 'Press Enter to continue...' }]);
   }
 };
 
@@ -385,7 +393,7 @@ const travelMenu = async () => {
   ]);
 
   if (planet === 'BACK') {
-    return;
+    return false; // No continue prompt needed
   }
 
   await travelToPlanet(currentGame.id, planet.id);
@@ -394,6 +402,7 @@ const travelMenu = async () => {
   currentGame.turns_used++;
   
   displaySuccess(`Hyperspace jump complete! Arrived at ${planet.name}. Turn consumed.`);
+  return true; // Show continue prompt for successful travel
 };
 
 const viewStats = async () => {

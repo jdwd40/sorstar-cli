@@ -24,6 +24,7 @@ import {
   displaySuccess, 
   displayError, 
   displayWarning,
+  displayInfo,
   displayNavigationHelp,
   addBackOption,
   addCancelOption,

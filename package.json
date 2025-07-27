@@ -1,0 +1,32 @@
+{
+  "name": "sorstar",
+  "version": "1.0.0",
+  "description": "A turn-based CLI trading game",
+  "main": "src/index.js",
+  "type": "module",
+  "scripts": {
+    "start": "node src/index.js",
+    "dev": "node --watch src/index.js",
+    "seed": "node src/scripts/seed.js",
+    "db:setup": "node src/scripts/setupDatabase.js"
+  },
+  "dependencies": {
+    "bcrypt": "^5.1.1",
+    "chalk": "^5.3.0",
+    "commander": "^11.1.0",
+    "dotenv": "^17.2.1",
+    "inquirer": "^9.2.12",
+    "pg": "^8.11.3"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.2"
+  },
+  "keywords": [
+    "game",
+    "cli",
+    "trading",
+    "space"
+  ],
+  "author": "Your Name",
+  "license": "MIT"
+}

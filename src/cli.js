@@ -256,13 +256,19 @@ const buyMenu = async () => {
     return;
   }
 
+  // Display market table with buy options
+  displayMarketTable(prices, currentGame.planetName);
+  console.log(chalk.bold.cyan(`💰 Available Credits: ${currentGame.credits.toLocaleString()}`));
+  console.log(chalk.bold.magenta(`📦 Cargo Space: ${totalCargo}/${currentGame.cargoCapacity} units`));
+  console.log();
+
   const { commodity } = await inquirer.prompt([
     {
       type: 'list',
       name: 'commodity',
-      message: `${icons.buy} What commodity would you like to purchase?`,
-      choices: addBackOption(prices.map(item => ({
-        name: `${icons.credits} ${item.commodity_name} - ${item.buy_price} credits each (Stock: ${item.stock})`,
+      message: `${icons.buy} Select commodity to purchase:`,
+      choices: addBackOption(prices.map((item, index) => ({
+        name: `${index + 1}. ${item.commodity_name} - ${item.buy_price} credits each (Stock: ${item.stock})`,
         value: item
       })), 'Back to Main Menu')
     }
@@ -320,13 +326,18 @@ const sellMenu = async () => {
     return;
   }
 
+  // Display cargo table with sell options
+  displayCargoTable(cargo);
+  console.log(chalk.bold.cyan(`💰 Current Credits: ${currentGame.credits.toLocaleString()}`));
+  console.log();
+
   const { commodity } = await inquirer.prompt([
     {
       type: 'list',
       name: 'commodity',
-      message: `${icons.sell} What commodity would you like to sell?`,
-      choices: addBackOption(cargo.map(item => ({
-        name: `${icons.cargo} ${item.commodity_name} - ${item.quantity} units`,
+      message: `${icons.sell} Select commodity to sell:`,
+      choices: addBackOption(cargo.map((item, index) => ({
+        name: `${index + 1}. ${item.commodity_name} - ${item.quantity} units owned`,
         value: item
       })), 'Back to Main Menu')
     }

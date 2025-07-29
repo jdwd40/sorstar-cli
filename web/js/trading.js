@@ -316,7 +316,15 @@ export class TradingManager {
             
             UI.closeAllModals();
             await this.game.loadGameState();
-            UI.showMessage(response.message, 'success');
+            
+            // Show success message with purchase details
+            const purchaseMessage = `✅ Purchase successful! Bought ${quantity} units of ${this.currentTransaction.name} for ${UI.formatCurrency(quantity * this.currentTransaction.price)}`;
+            UI.showMessage(purchaseMessage, 'success', 3000);
+            
+            // Automatically show cargo hold with the new commodity
+            setTimeout(() => {
+                this.game.showCargo();
+            }, 1000);
             
             // Refresh market if currently shown
             if (document.getElementById('game-content').innerHTML.includes('Market')) {

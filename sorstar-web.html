@@ -30,8 +30,8 @@
                 <input type="text" id="username" placeholder="Pilot Name" autocomplete="username" required>
                 <input type="password" id="password" placeholder="Access Code" autocomplete="current-password" required>
                 <div class="auth-buttons">
-                    <button onclick="authManager.login()" class="btn-confirm">🔑 Login</button>
-                    <button onclick="authManager.register()">✨ Register</button>
+                    <button id="login-btn" class="btn-confirm">🔑 Login</button>
+                    <button id="register-btn">✨ Register</button>
                 </div>
                 <div id="auth-message" aria-live="polite"></div>
             </div>
@@ -161,6 +161,9 @@
                         this.tradingManager.openSellModal(commodityId, name, quantity);
                     };
                     
+                    // Set up event listeners
+                    this.setupEventListeners();
+                    
                     // Set up UI
                     UI.setupMobileOptimizations();
                     UI.setupModalCloseHandlers();
@@ -178,8 +181,11 @@
                     document.getElementById('loading-screen').innerHTML = `
                         <div class="modal-content text-center">
                             <div style="font-size: 2em; margin-bottom: 20px;">⚠️</div>
-                            <div class="error">Failed to connect to Sorstar server</div>
+                            <div class="error">Failed to initialize Sorstar</div>
                             <div style="margin-top: 10px; font-size: 0.9em;">
+                                Error: ${error.message}
+                            </div>
+                            <div style="margin-top: 10px; font-size: 0.8em;">
                                 Please ensure the server is running on port 3000
                             </div>
                             <button onclick="location.reload()" style="margin-top: 20px;">
@@ -187,6 +193,20 @@
                             </button>
                         </div>
                     `;
+                }
+            }
+
+            setupEventListeners() {
+                // Login button
+                const loginBtn = document.getElementById('login-btn');
+                if (loginBtn) {
+                    loginBtn.addEventListener('click', () => this.authManager.login());
+                }
+                
+                // Register button
+                const registerBtn = document.getElementById('register-btn');
+                if (registerBtn) {
+                    registerBtn.addEventListener('click', () => this.authManager.register());
                 }
             }
 

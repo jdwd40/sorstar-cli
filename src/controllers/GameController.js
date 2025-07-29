@@ -24,7 +24,13 @@ export class GameController {
   static async getGameState(req, res) {
     try {
       const gameState = await Game.findByUserId(req.user.id);
-      res.json(gameState ? gameState.toJSON() : null);
+      if (gameState) {
+        const result = gameState.toJSON();
+        result.username = req.user.username;
+        res.json(result);
+      } else {
+        res.json(null);
+      }
     } catch (error) {
       res.status(500).json({ error: error.message });
     }

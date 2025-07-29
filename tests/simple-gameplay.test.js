@@ -1,8 +1,9 @@
 import request from 'supertest';
-import { app } from '../src/server.js';
-import { query } from '../src/utils/database.js';
+import { testApp as app } from '../src/testServer.js';
+import { testQuery as query } from '../src/utils/testDatabase.js';
 
 const cleanup = async () => {
+  console.log('🧹 Cleaning up test data...');
   await query('DELETE FROM transactions');
   await query('DELETE FROM cargo');
   await query('DELETE FROM games');

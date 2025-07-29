@@ -1,4 +1,4 @@
-import { query } from '../utils/database.js';
+import { query } from '../utils/dbConnection.js';
 
 export class Ship {
   constructor(data) {

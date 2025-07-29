@@ -158,7 +158,7 @@ const shipSelection = async () => {
   
   ships.forEach(ship => {
     console.log(chalk.bold.white(`${icons.ship} ${ship.name}`));
-    console.log(chalk.cyan(`   ${icons.cargo} Cargo: ${ship.cargo_capacity} units`));
+    console.log(chalk.cyan(`   ${icons.cargo} Cargo: ${ship.cargoCapacity} units`));
     console.log(chalk.yellow(`   ${icons.credits} Cost: ${ship.cost} credits`));
     console.log(chalk.gray(`   📝 ${ship.description}`));
     console.log();
@@ -170,7 +170,7 @@ const shipSelection = async () => {
       name: 'selectedShip',
       message: `${icons.ship} Select your starship:`,
       choices: ships.map(ship => ({
-        name: `${icons.ship} ${ship.name} (${ship.cargo_capacity} cargo, ${ship.cost} credits)`,
+        name: `${icons.ship} ${ship.name} (${ship.cargoCapacity} cargo, ${ship.cost} credits)`,
         value: ship.id
       }))
     }
@@ -185,8 +185,8 @@ const viewMarket = async () => {
   console.clear();
   displayHeader(currentUser, currentGame);
   
-  const prices = await getMarketPrices(currentGame.current_planet_id);
-  displayMarketTable(prices, currentGame.planet_name);
+  const prices = await getMarketPrices(currentGame.currentPlanetId);
+  displayMarketTable(prices, currentGame.planetName);
   
   const { action } = await inquirer.prompt([
     {
@@ -219,7 +219,7 @@ const viewCargo = async () => {
   const cargo = await getCargo(currentGame.id);
   const totalCargo = cargo.reduce((sum, item) => sum + item.quantity, 0);
   
-  displayCargoTable(cargo, totalCargo, currentGame.cargo_capacity);
+  displayCargoTable(cargo, totalCargo, currentGame.cargoCapacity);
   
   if (cargo.length > 0) {
     const { action } = await inquirer.prompt([
@@ -246,11 +246,11 @@ const buyMenu = async () => {
   displayHeader(currentUser, currentGame);
   displayTitle('COMMODITY PURCHASE CENTER', icons.buy);
   
-  const prices = await getMarketPrices(currentGame.current_planet_id);
+  const prices = await getMarketPrices(currentGame.currentPlanetId);
   const cargo = await getCargo(currentGame.id);
   const totalCargo = cargo.reduce((sum, item) => sum + item.quantity, 0);
   
-  if (totalCargo >= currentGame.cargo_capacity) {
+  if (totalCargo >= currentGame.cargoCapacity) {
     displayError('Cargo hold is full! Cannot purchase additional commodities.');
     await inquirer.prompt([{ type: 'input', name: 'continue', message: 'Press Enter to continue...' }]);
     return;
@@ -273,7 +273,7 @@ const buyMenu = async () => {
   }
 
   const maxAffordable = Math.floor(currentGame.credits / commodity.buy_price);
-  const maxSpace = currentGame.cargo_capacity - totalCargo;
+  const maxSpace = currentGame.cargoCapacity - totalCargo;
   const maxPurchase = Math.min(maxAffordable, maxSpace, commodity.stock);
 
   if (maxPurchase <= 0) {
@@ -336,7 +336,7 @@ const sellMenu = async () => {
     return;
   }
 
-  const prices = await getMarketPrices(currentGame.current_planet_id);
+  const prices = await getMarketPrices(currentGame.currentPlanetId);
   const marketPrice = prices.find(p => p.commodity_id === commodity.commodity_id);
 
   const { quantity } = await inquirer.prompt([
@@ -371,7 +371,7 @@ const travelMenu = async () => {
   displayTitle('HYPERSPACE NAVIGATION CENTER', icons.travel);
   
   const planets = await getPlanets();
-  const otherPlanets = planets.filter(p => p.id !== currentGame.current_planet_id);
+  const otherPlanets = planets.filter(p => p.id !== currentGame.currentPlanetId);
 
   const { planet } = await inquirer.prompt([
     {
@@ -390,9 +390,9 @@ const travelMenu = async () => {
   }
 
   await travelToPlanet(currentGame.id, planet.id);
-  currentGame.current_planet_id = planet.id;
-  currentGame.planet_name = planet.name;
-  currentGame.turns_used++;
+  currentGame.currentPlanetId = planet.id;
+  currentGame.planetName = planet.name;
+  currentGame.turnsUsed++;
   
   displaySuccess(`Hyperspace jump complete! Arrived at ${planet.name}. Turn consumed.`);
   return true; // Show continue prompt for successful travel

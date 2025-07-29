@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Sorstar - Advanced Space Trading Game Web Interface">
+    <meta name="theme-color" content="#0a0a0a">
+    <title>Sorstar - Space Trading Command Center</title>
+    
+    <!-- Favicon -->
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🚀</text></svg>">
+    
+    <!-- Stylesheets -->
+    <link rel="stylesheet" href="web/css/styles.css">
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <header class="header">
+            🚀 SORSTAR - SPACE TRADING GAME
+            <div class="subtitle">
+                Advanced Trading Interface v2.0
+            </div>
+        </header>
+        
+        <!-- Authentication Section -->
+        <section id="auth-section" class="section">
+            <h2>🛡️ Pilot Authentication</h2>
+            <div class="auth-form">
+                <input type="text" id="username" placeholder="Pilot Name" autocomplete="username" required>
+                <input type="password" id="password" placeholder="Access Code" autocomplete="current-password" required>
+                <div class="auth-buttons">
+                    <button onclick="authManager.login()" class="btn-confirm">🔑 Login</button>
+                    <button onclick="authManager.register()">✨ Register</button>
+                </div>
+                <div id="auth-message" aria-live="polite"></div>
+            </div>
+        </section>
+        
+        <!-- Game Section -->
+        <section id="game-section" class="section hidden">
+            <h2>🎮 Command Center</h2>
+            
+            <!-- Game Stats -->
+            <div id="game-stats" class="game-stats" aria-live="polite">
+                <!-- Stats will be populated by JavaScript -->
+            </div>
+            
+            <!-- Game Controls -->
+            <nav class="game-buttons" role="navigation" aria-label="Game Actions">
+                <button onclick="gameManager.loadGameState()" title="Refresh game data">🔄 Refresh</button>
+                <button id="start-game-btn" onclick="gameManager.showShips()" style="display: none;" title="Start a new game">🚀 Start Game</button>
+                <button id="market-btn" onclick="gameManager.showMarket()" style="display: none;" title="View market prices">💰 Market</button>
+                <button id="cargo-btn" onclick="gameManager.showCargo()" style="display: none;" title="View cargo hold">📦 Cargo</button>
+                <button id="travel-btn" onclick="gameManager.showPlanets()" style="display: none;" title="Travel to other planets">🌍 Travel</button>
+                <button onclick="authManager.logout()" class="btn-cancel" title="Logout">🚪 Logout</button>
+            </nav>
+            
+            <!-- Game Content Area -->
+            <main id="game-content" class="game-content" role="main" aria-live="polite">
+                <!-- Dynamic content will be loaded here -->
+            </main>
+        </section>
+    </div>
+
+    <!-- Buy Modal -->
+    <div id="buyModal" class="modal" role="dialog" aria-labelledby="buyModalHeader" aria-hidden="true">
+        <div class="modal-content">
+            <header class="modal-header" id="buyModalHeader">💰 Purchase Commodity</header>
+            <div id="buyModalContent" role="document">
+                <!-- Dynamic content will be loaded here -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Sell Modal -->
+    <div id="sellModal" class="modal" role="dialog" aria-labelledby="sellModalHeader" aria-hidden="true">
+        <div class="modal-content">
+            <header class="modal-header" id="sellModalHeader">💼 Sell Commodity</header>
+            <div id="sellModalContent" role="document">
+                <!-- Dynamic content will be loaded here -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Confirmation Modal -->
+    <div id="confirmModal" class="modal" role="dialog" aria-labelledby="confirmModalHeader" aria-hidden="true">
+        <div class="modal-content">
+            <header class="modal-header" id="confirmModalHeader">⚠️ Confirm Transaction</header>
+            <div id="confirmModalContent" role="document">
+                <!-- Dynamic content will be loaded here -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Loading Screen (hidden by default) -->
+    <div id="loading-screen" class="modal hidden" style="background: rgba(0,0,0,0.95);">
+        <div class="modal-content text-center">
+            <div style="font-size: 3em; margin-bottom: 20px;">🚀</div>
+            <div>Loading Sorstar...</div>
+            <div style="margin-top: 10px; font-size: 0.9em; color: #666;">
+                Initializing trading systems...
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script type="module">
+        // Import modules
+        import { ApiClient } from './web/js/api.js';
+        import { UI } from './web/js/ui.js';
+        import { GameManager } from './web/js/game.js';
+        import { TradingManager } from './web/js/trading.js';
+        import { AuthManager } from './web/js/auth.js';
+
+        // Initialize application
+        class SorstarApp {
+            constructor() {
+                this.init();
+            }
+
+            async init() {
+                try {
+                    console.log('🚀 Starting Sorstar initialization...');
+                    
+                    // Show loading screen
+                    document.getElementById('loading-screen').classList.remove('hidden');
+                    
+                    // Initialize core components
+                    console.log('📡 Creating API client...');
+                    this.api = new ApiClient();
+                    
+                    console.log('🎮 Creating game manager...');
+                    this.gameManager = new GameManager(this.api);
+                    
+                    console.log('💰 Creating trading manager...');
+                    this.tradingManager = new TradingManager(this.gameManager, this.api);
+                    
+                    console.log('🔐 Creating auth manager...');
+                    this.authManager = new AuthManager(this.api, this.gameManager);
+                    
+                    // Set up global references for inline handlers
+                    console.log('🌐 Setting up global references...');
+                    window.authManager = this.authManager;
+                    window.gameManager = this.gameManager;
+                    window.tradingManager = this.tradingManager;
+                    window.UI = UI;
+                    
+                    console.log('✅ Global references set:', {
+                        authManager: !!window.authManager,
+                        gameManager: !!window.gameManager,
+                        tradingManager: !!window.tradingManager,
+                        UI: !!window.UI
+                    });
+                    
+                    // Connect trading manager to game manager
+                    this.gameManager.openBuyModal = (commodityId, name, price, stock) => {
+                        this.tradingManager.openBuyModal(commodityId, name, price, stock);
+                    };
+                    this.gameManager.openSellModal = (commodityId, name, quantity) => {
+                        this.tradingManager.openSellModal(commodityId, name, quantity);
+                    };
+                    
+                    // Set up UI
+                    UI.setupMobileOptimizations();
+                    UI.setupModalCloseHandlers();
+                    
+                    // Test server connection
+                    await this.testConnection();
+                    
+                    // Hide loading screen
+                    document.getElementById('loading-screen').classList.add('hidden');
+                    
+                    console.log('🚀 Sorstar Web Interface initialized successfully');
+                    
+                } catch (error) {
+                    console.error('Failed to initialize Sorstar:', error);
+                    document.getElementById('loading-screen').innerHTML = `
+                        <div class="modal-content text-center">
+                            <div style="font-size: 2em; margin-bottom: 20px;">⚠️</div>
+                            <div class="error">Failed to connect to Sorstar server</div>
+                            <div style="margin-top: 10px; font-size: 0.9em;">
+                                Please ensure the server is running on port 3000
+                            </div>
+                            <button onclick="location.reload()" style="margin-top: 20px;">
+                                🔄 Retry Connection
+                            </button>
+                        </div>
+                    `;
+                }
+            }
+
+            async testConnection() {
+                try {
+                    await this.api.healthCheck();
+                } catch (error) {
+                    throw new Error('Server connection failed. Please start the Sorstar server.');
+                }
+            }
+        }
+
+        // Start the application when DOM is loaded
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', () => new SorstarApp());
+        } else {
+            new SorstarApp();
+        }
+
+        // Service Worker registration (for PWA capabilities)
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                // Uncomment when service worker is implemented
+                // navigator.serviceWorker.register('/sw.js');
+            });
+        }
+    </script>
+
+    <!-- Development helpers (remove in production) -->
+    <script>
+        // Console helper for development
+        if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+            console.log('🚀 Sorstar Development Mode');
+            console.log('Available test users:');
+            console.log('- testpilot / password123 (has game)');
+            console.log('- frontend_test / test123 (no game)');
+            
+            // Add keyboard shortcuts
+            document.addEventListener('keydown', (e) => {
+                if (e.ctrlKey || e.metaKey) {
+                    switch(e.key) {
+                        case '1':
+                            e.preventDefault();
+                            document.getElementById('username').value = 'testpilot';
+                            document.getElementById('password').value = 'password123';
+                            break;
+                        case '2':
+                            e.preventDefault();
+                            document.getElementById('username').value = 'frontend_test';
+                            document.getElementById('password').value = 'test123';
+                            break;
+                    }
+                }
+            });
+        }
+    </script>
+</body>
+</html>

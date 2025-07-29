@@ -1,5 +1,5 @@
 import bcrypt from 'bcrypt';
-import { query } from '../utils/database.js';
+import { query } from '../utils/dbConnection.js';
 
 export class User {
   constructor(data) {

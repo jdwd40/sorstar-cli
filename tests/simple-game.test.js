@@ -1,11 +1,12 @@
 import request from 'supertest';
-import { app } from '../src/server.js';
-import { query } from '../src/utils/database.js';
+import { testApp as app } from '../src/testServer.js';
+import { testQuery as query } from '../src/utils/testDatabase.js';
 import jwt from 'jsonwebtoken';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
 
 const cleanup = async () => {
+  console.log('🧹 Cleaning up test data...');
   await query('DELETE FROM transactions');
   await query('DELETE FROM cargo');
   await query('DELETE FROM games');

@@ -12,6 +12,7 @@
     "dev:server": "node --watch src/index.js server",
     "seed": "node src/scripts/seed.js",
     "db:setup": "node src/scripts/setupDatabase.js",
+    "db:setup:test": "node src/scripts/setupTestDatabase.js",
     "test": "node test-runner.js",
     "test:jest": "NODE_OPTIONS=--experimental-vm-modules jest",
     "test:watch": "NODE_OPTIONS=--experimental-vm-modules jest --watch"
@@ -41,6 +42,6 @@
     "trading",
     "space"
   ],
-  "author": "Your Name",
+  "author": "John Driscoll",
   "license": "MIT"
 }

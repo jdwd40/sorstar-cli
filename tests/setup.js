@@ -1,24 +1,26 @@
-import { query, getClient } from '../src/utils/database.js';
+import { testQuery, getTestClient } from '../src/utils/testDatabase.js';
 
-// Test database setup and cleanup
+// Test database setup and cleanup - ONLY affects sorstar_test database
 const setupTestDatabase = async () => {
-  // Clean up all tables for testing
-  await query('DELETE FROM transactions');
-  await query('DELETE FROM cargo');
-  await query('DELETE FROM games');
-  await query('DELETE FROM users');
+  console.log('🧪 Setting up test database (sorstar_test)...');
+  // Clean up all tables for testing in TEST DATABASE ONLY
+  await testQuery('DELETE FROM transactions');
+  await testQuery('DELETE FROM cargo');
+  await testQuery('DELETE FROM games');
+  await testQuery('DELETE FROM users');
   
-  // Reset sequences
-  await query('ALTER SEQUENCE users_id_seq RESTART WITH 1');
-  await query('ALTER SEQUENCE games_id_seq RESTART WITH 1');
+  // Reset sequences in TEST DATABASE ONLY
+  await testQuery('ALTER SEQUENCE users_id_seq RESTART WITH 1');
+  await testQuery('ALTER SEQUENCE games_id_seq RESTART WITH 1');
 };
 
 const teardownTestDatabase = async () => {
-  // Clean up after tests
-  await query('DELETE FROM transactions');
-  await query('DELETE FROM cargo');
-  await query('DELETE FROM games');  
-  await query('DELETE FROM users');
+  console.log('🧹 Cleaning up test database (sorstar_test)...');
+  // Clean up after tests in TEST DATABASE ONLY
+  await testQuery('DELETE FROM transactions');
+  await testQuery('DELETE FROM cargo');
+  await testQuery('DELETE FROM games');  
+  await testQuery('DELETE FROM users');
 };
 
 // Global setup and teardown
@@ -30,12 +32,12 @@ afterAll(async () => {
   await teardownTestDatabase();
 });
 
-// Clean up after each test
+// Clean up after each test - TEST DATABASE ONLY
 afterEach(async () => {
-  await query('DELETE FROM transactions');
-  await query('DELETE FROM cargo');
-  await query('DELETE FROM games');
-  await query('DELETE FROM users');
+  await testQuery('DELETE FROM transactions');
+  await testQuery('DELETE FROM cargo');
+  await testQuery('DELETE FROM games');
+  await testQuery('DELETE FROM users');
 });
 
-export { setupTestDatabase, teardownTestDatabase };
+export { setupTestDatabase, teardownTestDatabase, testQuery as query, getTestClient as getClient };

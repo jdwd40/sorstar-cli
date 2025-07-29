@@ -1,4 +1,4 @@
-import { query, getClient } from '../utils/database.js';
+import { query, getClient } from '../utils/dbConnection.js';
 import { Planet } from './Planet.js';
 
 export class Game {

@@ -3,16 +3,24 @@ import cors from 'cors';
 import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
 import jwt from 'jsonwebtoken';
+import { fileURLToPath } from 'url';
+import { dirname, join } from 'path';
 import { AuthController } from './controllers/AuthController.js';
 import { GameController } from './controllers/GameController.js';
 import { MarketController } from './controllers/MarketController.js';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+const projectRoot = join(__dirname, '..');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
 
-// Middleware
-app.use(helmet());
+// Middleware - disable CSP for development to allow inline scripts
+app.use(helmet({
+  contentSecurityPolicy: false
+}));
 app.use(cors());
 app.use(express.json());
 
@@ -22,6 +30,9 @@ const limiter = rateLimit({
   max: 100 // limit each IP to 100 requests per windowMs
 });
 app.use(limiter);
+
+// Serve static files (web interface)
+app.use(express.static(projectRoot));
 
 // JWT middleware
 const authenticateToken = (req, res, next) => {
@@ -70,14 +81,44 @@ app.use((err, req, res, next) => {
   res.status(500).json({ error: 'Something went wrong!' });
 });
 
-// 404 handler
+// Serve web interface root
+app.get('/', (req, res) => {
+  res.redirect('/sorstar-web.html');
+});
+
+// 404 handler for API endpoints only
+app.use('/api', (req, res) => {
+  res.status(404).json({ error: 'API endpoint not found' });
+});
+
+// 404 handler for other requests
 app.use((req, res) => {
-  res.status(404).json({ error: 'Endpoint not found' });
+  // If it's an API request, return JSON error
+  if (req.path.startsWith('/auth') || req.path.startsWith('/game') || 
+      req.path.startsWith('/market') || req.path.startsWith('/cargo') || 
+      req.path.startsWith('/buy') || req.path.startsWith('/sell') || 
+      req.path.startsWith('/ships') || req.path.startsWith('/planets') || 
+      req.path.startsWith('/stats') || req.path.startsWith('/health')) {
+    return res.status(404).json({ error: 'Endpoint not found' });
+  }
+  
+  // For non-API requests, serve 404 page or redirect to main interface
+  res.status(404).send(`
+    <!DOCTYPE html>
+    <html>
+    <head><title>404 - Not Found</title></head>
+    <body>
+      <h1>Page Not Found</h1>
+      <p><a href="/sorstar-web.html">Return to Sorstar Web Interface</a></p>
+    </body>
+    </html>
+  `);
 });
 
 const startServer = () => {
   app.listen(PORT, () => {
     console.log(`🚀 Sorstar API Server running on port ${PORT}`);
+    console.log(`🌐 Web Interface: http://localhost:${PORT}/sorstar-web.html`);
     console.log(`📖 API Documentation:`);
     console.log(`   POST /auth/register - Create account`);
     console.log(`   POST /auth/login - Login`);

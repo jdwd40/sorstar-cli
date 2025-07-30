@@ -78,6 +78,12 @@ export class GameController {
         return res.status(400).json({ error: 'Already at this planet' });
       }
 
+      // Validate planet exists
+      const planet = await Planet.findById(planetId);
+      if (!planet) {
+        return res.status(400).json({ error: 'Planet not found' });
+      }
+
       await game.travelToPlanet(planetId);
       const updatedGameState = await Game.findByUserId(req.user.id);
       

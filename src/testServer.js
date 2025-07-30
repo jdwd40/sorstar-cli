@@ -21,10 +21,10 @@ app.use(helmet());
 app.use(cors());
 app.use(express.json());
 
-// Rate limiting
+// Rate limiting - more permissive for tests
 const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100 // limit each IP to 100 requests per windowMs
+  windowMs: 1 * 60 * 1000, // 1 minute
+  max: 1000 // limit each IP to 1000 requests per minute for tests
 });
 app.use(limiter);
 

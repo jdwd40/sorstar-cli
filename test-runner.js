@@ -16,6 +16,7 @@ const runTests = async () => {
     const { testAuth } = await import('./tests/simple-auth.test.js');
     const { testGame } = await import('./tests/simple-game.test.js');
     const { testGameplay } = await import('./tests/simple-gameplay.test.js');
+    const { testTradingWorkflow } = await import('./tests/trading-workflow.test.js');
 
     let totalTests = 0;
     let passedTests = 0;
@@ -43,6 +44,14 @@ const runTests = async () => {
     totalTests += gameplayResults.total;
     passedTests += gameplayResults.passed;
     console.log(`✅ Passed: ${gameplayResults.passed}/${gameplayResults.total}\n`);
+
+    // Run trading workflow tests
+    console.log('💰 Trading Workflow Tests');
+    console.log('=' .repeat(50));
+    const tradingResults = await testTradingWorkflow();
+    totalTests += tradingResults.total;
+    passedTests += tradingResults.passed;
+    console.log(`✅ Passed: ${tradingResults.passed}/${tradingResults.total}\n`);
 
     // Summary
     console.log('📊 Test Summary');

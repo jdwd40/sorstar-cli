@@ -220,15 +220,138 @@ export class GameManager {
             
             let html = '<h3>🌍 Travel Destinations</h3>';
             
-            const headers = ['Planet', 'Description', 'Coordinates', 'Actions'];
-            const rows = otherPlanets.map(planet => [
-                `<strong>${planet.name}</strong>`,
-                planet.description || 'Unknown',
-                `(${planet.xCoord || 0}, ${planet.yCoord || 0})`,
-                `<button onclick="gameManager.travelToPlanet(${planet.id}, '${planet.name}')">
-                    🚀 Travel
-                </button>`
-            ]);
+            // Get detailed planet information and travel costs
+            const planetsWithDetails = await Promise.all(
+                otherPlanets.map(async (planet) => {
+                    try {
+                        // Get planet details and travel cost concurrently
+                        const [details, travelCost] = await Promise.all([
+                            this.api.getPlanetDetails(planet.id),
+                            this.api.getTravelCost(planet.id)
+                        ]);
+                        
+                        return { ...planet, details, travelCost };
+                    } catch (error) {
+                        console.warn(`Failed to get details for planet ${planet.name}:`, error);
+                        return { 
+                            ...planet, 
+                            details: { type: 'Unknown', classification: 'Standard', fuelPrice: 'Unknown' },
+                            travelCost: { fuelCost: 'Unknown', timeCost: 'Unknown', canTravel: false }
+                        };
+                    }
+                })
+            );
+            
+            const headers = ['Planet & Type', 'Classification & Features', 'Travel Cost', 'Actions'];
+            const rows = planetsWithDetails.map(planet => {
+                // Determine planet type and add appropriate emoji/description
+                let planetTypeDisplay = planet.details.type || planet.planetType || 'Unknown';
+                let typeEmoji = '🌍';
+                let typeDescription = '';
+                
+                switch (planetTypeDisplay) {
+                    case 'Trade Hub':
+                        typeEmoji = '🏛️';
+                        typeDescription = 'Major trade center with competitive prices';
+                        break;
+                    case 'Mining':
+                        typeEmoji = '⛏️';
+                        typeDescription = 'Rich in raw materials and metals';
+                        break;
+                    case 'Colony':
+                        typeEmoji = '🏘️';
+                        typeDescription = 'Growing settlement with diverse needs';
+                        break;
+                    case 'Industrial':
+                        typeEmoji = '🏭';
+                        typeDescription = 'Manufacturing hub with processed goods';
+                        break;
+                    case 'Agricultural':
+                        typeEmoji = '🌾';
+                        typeDescription = 'Food production center';
+                        break;
+                    case 'Research':
+                        typeEmoji = '🔬';
+                        typeDescription = 'Technology and scientific advancement';
+                        break;
+                    default:
+                        if (planet.name.includes('Station')) {
+                            typeEmoji = '🛰️';
+                            typeDescription = 'Orbital facility or outpost';
+                        } else if (planet.description.includes('crystal')) {
+                            typeEmoji = '💎';
+                            typeDescription = 'Mineral extraction and crystal mining';
+                        } else if (planet.description.includes('water') || planet.description.includes('ocean')) {
+                            typeEmoji = '🌊';
+                            typeDescription = 'Water-rich world';
+                        } else if (planet.description.includes('energy')) {
+                            typeEmoji = '⚡';
+                            typeDescription = 'Energy production facility';
+                        } else if (planet.description.includes('tech')) {
+                            typeEmoji = '💻';
+                            typeDescription = 'Technology research center';
+                        }
+                }
+                
+                // Format classification and distance info
+                let classificationInfo = planet.details.classification || 'Standard';
+                if (planet.isDistant) {
+                    classificationInfo += ' • <span style="color: orange;">Distant Planet</span>';
+                } else {
+                    classificationInfo += ' • <span style="color: var(--success-color);">Near System</span>';
+                }
+                
+                // Add fuel price info
+                const fuelPrice = planet.details.fuelPrice || 'Unknown';
+                classificationInfo += `<br><small>⛽ Fuel: ${fuelPrice === 'Unknown' ? fuelPrice : UI.formatCurrency(fuelPrice) + '/unit'}</small>`;
+                
+                // Format travel costs with proper styling
+                let travelCostDisplay = '';
+                const fuelCost = planet.travelCost.fuelCost;
+                const timeCost = planet.travelCost.timeCost;
+                const canTravel = planet.travelCost.canTravel;
+                
+                if (fuelCost !== 'Unknown' && timeCost !== 'Unknown') {
+                    const fuelColor = canTravel ? 'var(--success-color)' : 'var(--error-color)';
+                    travelCostDisplay = `
+                        <div><strong>⛽ Fuel:</strong> <span style="color: ${fuelColor};">${fuelCost} units</span></div>
+                        <div><strong>⏱️ Time:</strong> ${timeCost} turn${timeCost > 1 ? 's' : ''}</div>
+                        ${!canTravel ? '<div style="color: var(--error-color); font-size: 0.9em;">❌ Insufficient Fuel</div>' : ''}
+                    `;
+                } else {
+                    travelCostDisplay = '<div style="color: #666;">Travel cost unknown</div>';
+                }
+                
+                // Create travel button with appropriate state
+                let travelButton = '';
+                if (canTravel) {
+                    travelButton = `<button onclick="gameManager.travelToPlanet(${planet.id}, '${planet.name}')" 
+                                    title="Travel to ${planet.name}">
+                                    🚀 Travel
+                                   </button>`;
+                } else if (fuelCost !== 'Unknown') {
+                    travelButton = `<button disabled title="Need ${fuelCost} fuel units to travel here">
+                                    ⛽ Need Fuel
+                                   </button>`;
+                } else {
+                    travelButton = `<button onclick="gameManager.travelToPlanet(${planet.id}, '${planet.name}')">
+                                    🚀 Travel
+                                   </button>`;
+                }
+                
+                return [
+                    `<div><strong>${typeEmoji} ${planet.name}</strong></div>
+                     <div style="color: var(--secondary-text); font-size: 0.9em; margin-top: 5px;">${planetTypeDisplay}</div>
+                     <div style="color: #999; font-size: 0.8em; margin-top: 3px;">${typeDescription}</div>`,
+                    
+                    `<div style="margin-bottom: 8px;">${classificationInfo}</div>
+                     <div style="color: #999; font-size: 0.9em;">${planet.description || 'No additional information available'}</div>`,
+                    
+                    travelCostDisplay,
+                    
+                    travelButton
+                ];
+            });
             
             html += UI.createTable(headers, rows);
             document.getElementById('game-content').innerHTML = html;

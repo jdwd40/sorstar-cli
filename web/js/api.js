@@ -145,4 +145,49 @@ export class ApiClient {
 
         return this.call(`/game/travel/cost/${planetId}`);
     }
+
+    // Enhanced travel system endpoints
+    async getPlanetDetails(planetId) {
+        // Validate inputs
+        if (planetId === undefined) {
+            throw new Error('Planet ID is required');
+        }
+        
+        if (typeof planetId !== 'number') {
+            throw new Error('Planet ID must be a number');
+        }
+
+        return this.call(`/planets/${planetId}/details`);
+    }
+
+    async getPlanetDistanceInfo(planetId) {
+        // Validate inputs
+        if (planetId === undefined) {
+            throw new Error('Planet ID is required');
+        }
+        
+        if (typeof planetId !== 'number') {
+            throw new Error('Planet ID must be a number');
+        }
+
+        return this.call(`/planets/${planetId}/distance`);
+    }
+
+    // Commodities system endpoints
+    async getCommoditiesByPlanet(planetId) {
+        // Validate inputs
+        if (planetId === undefined) {
+            throw new Error('Planet ID is required');
+        }
+        
+        if (typeof planetId !== 'number') {
+            throw new Error('Planet ID must be a number');
+        }
+
+        return this.call(`/planets/${planetId}/commodities`);
+    }
+
+    async getCommodityCategories() {
+        return this.call('/commodities/categories');
+    }
 }

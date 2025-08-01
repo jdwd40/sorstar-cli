@@ -142,7 +142,7 @@ const runTests = async () => {
     }
 
     // Run Frontend API Tests
-    console.log('🖥️  Frontend API Tests');
+    console.log('🖥️  Frontend API Tests (Fuel System)');
     console.log('=' .repeat(50));
     try {
       const jestOutput = execSync('NODE_OPTIONS=--experimental-vm-modules npx jest tests/fuel-api-client.test.js --silent', { encoding: 'utf8' });
@@ -153,6 +153,70 @@ const runTests = async () => {
     } catch (error) {
       console.log('❌ Some Frontend API tests failed\n');
       const jestTotal = 14;
+      totalTests += jestTotal;
+      // Don't add to passedTests if failed
+    }
+
+    // Run Enhanced Travel API Tests
+    console.log('🚀 Enhanced Travel API Tests');
+    console.log('=' .repeat(50));
+    try {
+      const jestOutput = execSync('NODE_OPTIONS=--experimental-vm-modules npx jest tests/enhanced-travel-api.test.js --silent', { encoding: 'utf8' });
+      const jestPassed = 16; // Number of enhanced travel API tests
+      totalTests += jestPassed;
+      passedTests += jestPassed;
+      console.log(`✅ Passed: ${jestPassed}/${jestPassed}\n`);
+    } catch (error) {
+      console.log('❌ Some Enhanced Travel API tests failed\n');
+      const jestTotal = 16;
+      totalTests += jestTotal;
+      // Don't add to passedTests if failed
+    }
+
+    // Run Commodities API Tests
+    console.log('📦 Commodities API Tests');
+    console.log('=' .repeat(50));
+    try {
+      const jestOutput = execSync('NODE_OPTIONS=--experimental-vm-modules npx jest tests/commodities-api.test.js --silent', { encoding: 'utf8' });
+      const jestPassed = 12; // Number of commodities API tests
+      totalTests += jestPassed;
+      passedTests += jestPassed;
+      console.log(`✅ Passed: ${jestPassed}/${jestPassed}\n`);
+    } catch (error) {
+      console.log('❌ Some Commodities API tests failed\n');
+      const jestTotal = 12;
+      totalTests += jestTotal;
+      // Don't add to passedTests if failed
+    }
+
+    // Run Enhanced Game State API Tests
+    console.log('🎮 Enhanced Game State API Tests');
+    console.log('=' .repeat(50));
+    try {
+      const jestOutput = execSync('NODE_OPTIONS=--experimental-vm-modules npx jest tests/enhanced-gamestate-api.test.js --silent', { encoding: 'utf8' });
+      const jestPassed = 11; // Number of enhanced game state API tests
+      totalTests += jestPassed;
+      passedTests += jestPassed;
+      console.log(`✅ Passed: ${jestPassed}/${jestPassed}\n`);
+    } catch (error) {
+      console.log('❌ Some Enhanced Game State API tests failed\n');
+      const jestTotal = 11;
+      totalTests += jestTotal;
+      // Don't add to passedTests if failed
+    }
+
+    // Run Enhanced Planets Integration Tests
+    console.log('🌍 Enhanced Planets Integration Tests');
+    console.log('=' .repeat(50));
+    try {
+      const jestOutput = execSync('NODE_OPTIONS=--experimental-vm-modules npx jest tests/enhanced-planets-integration.test.js --silent', { encoding: 'utf8' });
+      const jestPassed = 8; // Number of enhanced planets integration tests
+      totalTests += jestPassed;
+      passedTests += jestPassed;
+      console.log(`✅ Passed: ${jestPassed}/${jestPassed}\n`);
+    } catch (error) {
+      console.log('❌ Some Enhanced Planets Integration tests failed\n');
+      const jestTotal = 8;
       totalTests += jestTotal;
       // Don't add to passedTests if failed
     }

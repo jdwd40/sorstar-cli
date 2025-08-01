@@ -111,4 +111,38 @@ export class ApiClient {
     async healthCheck() {
         return this.call('/health');
     }
+
+    // Fuel system endpoints
+    async getFuelInfo() {
+        return this.call('/game/fuel');
+    }
+
+    async buyFuel(planetId, quantity) {
+        // Validate inputs
+        if (planetId === undefined || quantity === undefined) {
+            throw new Error('Planet ID and quantity are required');
+        }
+        
+        if (typeof quantity !== 'number' || quantity <= 0) {
+            throw new Error('Quantity must be greater than 0');
+        }
+
+        return this.call('/game/fuel/buy', {
+            method: 'POST',
+            body: JSON.stringify({ planetId, quantity })
+        });
+    }
+
+    async getTravelCost(planetId) {
+        // Validate inputs
+        if (planetId === undefined) {
+            throw new Error('Planet ID is required');
+        }
+        
+        if (typeof planetId !== 'number') {
+            throw new Error('Planet ID must be a number');
+        }
+
+        return this.call(`/game/travel/cost/${planetId}`);
+    }
 }

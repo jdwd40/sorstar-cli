@@ -141,6 +141,22 @@ const runTests = async () => {
       // Don't add to passedTests if failed
     }
 
+    // Run Frontend API Tests
+    console.log('🖥️  Frontend API Tests');
+    console.log('=' .repeat(50));
+    try {
+      const jestOutput = execSync('NODE_OPTIONS=--experimental-vm-modules npx jest tests/fuel-api-client.test.js --silent', { encoding: 'utf8' });
+      const jestPassed = 14; // Number of frontend API tests
+      totalTests += jestPassed;
+      passedTests += jestPassed;
+      console.log(`✅ Passed: ${jestPassed}/${jestPassed}\n`);
+    } catch (error) {
+      console.log('❌ Some Frontend API tests failed\n');
+      const jestTotal = 14;
+      totalTests += jestTotal;
+      // Don't add to passedTests if failed
+    }
+
     // Summary
     console.log('📊 Test Summary');
     console.log('=' .repeat(50));

@@ -255,6 +255,146 @@ export class Planet {
     return score;
   }
 
+  // Fuel Trading Methods
+  async getFuelPrice() {
+    const basePrice = 5.0; // Base fuel price
+    let planetTypeModifier = 1.0;
+    let distanceModifier = 1.0;
+    
+    // Planet type pricing modifiers
+    const typeModifiers = {
+      'Trade Hub': 0.8,    // 20% discount - competitive pricing
+      'Agricultural': 0.9, // 10% discount - local production
+      'Colony': 0.85,      // 15% discount - simple economy
+      'Mining': 1.2,       // 20% markup - industrial demand
+      'Industrial': 1.15,  // 15% markup - heavy fuel use
+      'Research': 1.1,     // 10% markup - specialized facilities
+      'City': 1.05,        // 5% markup - urban convenience
+      'Military': 1.25,    // 25% markup - restricted access
+      'Forest': 0.95,      // 5% discount - natural resources
+      'Jungle': 0.9        // 10% discount - isolation
+    };
+    
+    if (this.planetType && typeModifiers[this.planetType]) {
+      planetTypeModifier = typeModifiers[this.planetType];
+    }
+    
+    // Distance modifier - distant planets have cheaper fuel
+    if (this.isDistant) {
+      distanceModifier = 0.7; // 30% discount for distant planets
+    }
+    
+    const finalPrice = basePrice * planetTypeModifier * distanceModifier;
+    return Math.round(finalPrice * 100) / 100; // Round to 2 decimal places
+  }
+
+  async getFuelMarketInfo() {
+    const price = await this.getFuelPrice();
+    
+    return {
+      price: price,
+      availability: 'Available',
+      planetName: this.name,
+      planetType: this.planetType || 'Unknown',
+      discount: this.isDistant ? 'Distance discount applied' : null
+    };
+  }
+
+  async calculateFuelCost(quantity) {
+    const pricePerUnit = await this.getFuelPrice();
+    
+    return {
+      quantity: quantity,
+      pricePerUnit: pricePerUnit,
+      totalCost: quantity * pricePerUnit
+    };
+  }
+
+  async getFuelPricingFactors() {
+    const basePrice = 5.0;
+    const priceModifiers = {
+      'Trade Hub': 0.8,
+      'Agricultural': 0.9,
+      'Colony': 0.85,
+      'Mining': 1.2,
+      'Industrial': 1.15,
+      'Research': 1.1,
+      'City': 1.05,
+      'Military': 1.25,
+      'Forest': 0.95,
+      'Jungle': 0.9
+    };
+    
+    const planetTypeModifier = (this.planetType && priceModifiers[this.planetType]) ? priceModifiers[this.planetType] : 1.0;
+    const distanceModifier = this.isDistant ? 0.7 : 1.0;
+    const finalPrice = basePrice * planetTypeModifier * distanceModifier;
+    
+    return {
+      basePrice: basePrice,
+      planetTypeModifier: planetTypeModifier,
+      distanceModifier: distanceModifier,
+      finalPrice: Math.round(finalPrice * 100) / 100
+    };
+  }
+
+  static async getFuelPriceComparison() {
+    const planets = await Planet.findAll();
+    const prices = [];
+    
+    for (const planet of planets) {
+      const price = await planet.getFuelPrice();
+      prices.push({
+        planetName: planet.name,
+        price: price,
+        planetType: planet.planetType,
+        isDistant: planet.isDistant
+      });
+    }
+    
+    prices.sort((a, b) => a.price - b.price);
+    
+    const cheapest = prices[0];
+    const mostExpensive = prices[prices.length - 1];
+    const average = prices.reduce((sum, p) => sum + p.price, 0) / prices.length;
+    const priceRange = mostExpensive.price - cheapest.price;
+    
+    return {
+      cheapest,
+      mostExpensive,
+      average: Math.round(average * 100) / 100,
+      priceRange: Math.round(priceRange * 100) / 100
+    };
+  }
+
+  static async getFuelPriceTrendsByType() {
+    const planets = await Planet.findAll();
+    const trends = {};
+    
+    for (const planet of planets) {
+      const type = planet.planetType || 'Unknown';
+      const price = await planet.getFuelPrice();
+      
+      if (!trends[type]) {
+        trends[type] = {
+          prices: [],
+          planetCount: 0
+        };
+      }
+      
+      trends[type].prices.push(price);
+      trends[type].planetCount++;
+    }
+    
+    // Calculate averages
+    for (const [type, data] of Object.entries(trends)) {
+      const average = data.prices.reduce((sum, price) => sum + price, 0) / data.prices.length;
+      trends[type].averagePrice = Math.round(average * 100) / 100;
+      delete trends[type].prices; // Remove raw prices array
+    }
+    
+    return trends;
+  }
+
   toJSON() {
     return {
       id: this.id,

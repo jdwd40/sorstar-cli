@@ -195,6 +195,191 @@ export class Game {
     }
   }
 
+  async setFuel(amount) {
+    const newFuel = Math.max(0, Math.min(this.maxFuel, amount));
+    await query('UPDATE games SET fuel = $1 WHERE id = $2', [newFuel, this.id]);
+    this.fuel = newFuel;
+  }
+
+  async setCredits(amount) {
+    const newCredits = Math.max(0, amount);
+    await query('UPDATE games SET credits = $1 WHERE id = $2', [newCredits, this.id]);
+    this.credits = newCredits;
+  }
+
+  async purchaseFuel(quantity) {
+    const currentPlanet = await Planet.findById(this.currentPlanetId);
+    const fuelPrice = await currentPlanet.getFuelPrice();
+    const totalCost = quantity * fuelPrice;
+    
+    // Check if player has enough credits
+    if (this.credits < totalCost) {
+      return {
+        success: false,
+        error: 'Insufficient credits'
+      };
+    }
+    
+    // Check if purchase would exceed fuel capacity
+    if (this.fuel + quantity > this.maxFuel) {
+      return {
+        success: false,
+        error: 'Would exceed fuel capacity'
+      };
+    }
+    
+    const client = await getClient();
+    
+    try {
+      await client.query('BEGIN');
+      
+      // Update game credits and fuel
+      const newCredits = this.credits - totalCost;
+      const newFuel = this.fuel + quantity;
+      
+      await client.query('UPDATE games SET credits = $1, fuel = $2 WHERE id = $3', 
+        [newCredits, newFuel, this.id]);
+      
+      // Record transaction
+      await client.query(`
+        INSERT INTO fuel_transactions (game_id, planet_id, quantity, price_per_unit, total_cost)
+        VALUES ($1, $2, $3, $4, $5)
+      `, [this.id, this.currentPlanetId, quantity, fuelPrice, totalCost]);
+      
+      await client.query('COMMIT');
+      
+      // Update instance state
+      this.credits = newCredits;
+      this.fuel = newFuel;
+      
+      return {
+        success: true,
+        fuelPurchased: quantity,
+        pricePerUnit: fuelPrice,
+        totalCost: totalCost,
+        remainingCredits: newCredits,
+        newFuelLevel: newFuel
+      };
+      
+    } catch (error) {
+      await client.query('ROLLBACK');
+      throw error;
+    } finally {
+      client.release();
+    }
+  }
+
+  async getFuelVendorInfo() {
+    const currentPlanet = await Planet.findById(this.currentPlanetId);
+    const fuelPrice = await currentPlanet.getFuelPrice();
+    
+    const maxByCredits = Math.floor(this.credits / fuelPrice);
+    const maxByCapacity = this.maxFuel - this.fuel;
+    const maxPurchasable = Math.min(maxByCredits, maxByCapacity);
+    
+    return {
+      planetName: currentPlanet.name,
+      fuelPrice: fuelPrice,
+      maxPurchasable: maxPurchasable,
+      playerCredits: this.credits,
+      currentFuel: this.fuel,
+      maxFuel: this.maxFuel
+    };
+  }
+
+  async getFuelTradingHistory() {
+    const result = await query(`
+      SELECT ft.*, p.name as planet_name
+      FROM fuel_transactions ft
+      JOIN planets p ON ft.planet_id = p.id
+      WHERE ft.game_id = $1
+      ORDER BY ft.created_at DESC
+    `, [this.id]);
+    
+    return result.rows.map(row => ({
+      quantity: row.quantity,
+      price: row.price_per_unit,
+      totalCost: row.total_cost,
+      planetName: row.planet_name,
+      timestamp: row.created_at
+    }));
+  }
+
+  async getFuelTradingRecommendations() {
+    const allPlanets = await Planet.findAll();
+    const currentPlanet = await Planet.findById(this.currentPlanetId);
+    const recommendations = [];
+    
+    for (const planet of allPlanets) {
+      if (planet.id === this.currentPlanetId) continue;
+      
+      const planetPrice = await planet.getFuelPrice();
+      const currentPrice = await currentPlanet.getFuelPrice();
+      
+      if (planetPrice < currentPrice) {
+        const travelCost = currentPlanet.fuelCostTo(planet);
+        const savings = currentPrice - planetPrice;
+        
+        recommendations.push({
+          planetName: planet.name,
+          price: planetPrice,
+          savings: savings,
+          travelCost: travelCost,
+          netSavings: savings - (travelCost * currentPrice)
+        });
+      }
+    }
+    
+    return recommendations.sort((a, b) => b.netSavings - a.netSavings);
+  }
+
+  async travelToPlanet(planetId) {
+    const currentPlanet = await Planet.findById(this.currentPlanetId);
+    const destinationPlanet = await Planet.findById(planetId);
+    
+    const fuelCost = currentPlanet.fuelCostTo(destinationPlanet);
+    
+    if (!this.hasEnoughFuel(fuelCost)) {
+      return {
+        success: false,
+        error: 'Insufficient fuel for travel'
+      };
+    }
+    
+    const client = await getClient();
+    
+    try {
+      await client.query('BEGIN');
+      
+      const newFuel = this.fuel - fuelCost;
+      const newTurn = this.currentTurn + currentPlanet.travelTimeTo(destinationPlanet);
+      
+      await client.query('UPDATE games SET current_planet_id = $1, fuel = $2, current_turn = $3, turns_used = turns_used + $4 WHERE id = $5', 
+        [planetId, newFuel, newTurn, currentPlanet.travelTimeTo(destinationPlanet), this.id]);
+      
+      await client.query('COMMIT');
+      
+      // Update instance state
+      this.currentPlanetId = planetId;
+      this.fuel = newFuel;
+      this.currentTurn = newTurn;
+      this.turnsUsed += currentPlanet.travelTimeTo(destinationPlanet);
+      
+      return {
+        success: true,
+        fuelConsumed: fuelCost,
+        turnsElapsed: currentPlanet.travelTimeTo(destinationPlanet),
+        newLocation: destinationPlanet.name
+      };
+      
+    } catch (error) {
+      await client.query('ROLLBACK');
+      throw error;
+    } finally {
+      client.release();
+    }
+  }
+
   toJSON() {
     return {
       id: this.id,

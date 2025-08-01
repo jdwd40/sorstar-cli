@@ -163,6 +163,191 @@ export class TestGame {
     }
   }
 
+  async setFuel(amount) {
+    const newFuel = Math.max(0, Math.min(this.maxFuel, amount));
+    await testQuery('UPDATE games SET fuel = $1 WHERE id = $2', [newFuel, this.id]);
+    this.fuel = newFuel;
+  }
+
+  async setCredits(amount) {
+    const newCredits = Math.max(0, amount);
+    await testQuery('UPDATE games SET credits = $1 WHERE id = $2', [newCredits, this.id]);
+    this.credits = newCredits;
+  }
+
+  async purchaseFuel(quantity) {
+    const currentPlanet = await TestPlanet.findById(this.currentPlanetId);
+    const fuelPrice = await currentPlanet.getFuelPrice();
+    const totalCost = quantity * fuelPrice;
+    
+    // Check if player has enough credits
+    if (this.credits < totalCost) {
+      return {
+        success: false,
+        error: 'Insufficient credits'
+      };
+    }
+    
+    // Check if purchase would exceed fuel capacity
+    if (this.fuel + quantity > this.maxFuel) {
+      return {
+        success: false,
+        error: 'Would exceed fuel capacity'
+      };
+    }
+    
+    const client = await getTestClient();
+    
+    try {
+      await client.query('BEGIN');
+      
+      // Update game credits and fuel
+      const newCredits = this.credits - totalCost;
+      const newFuel = this.fuel + quantity;
+      
+      await client.query('UPDATE games SET credits = $1, fuel = $2 WHERE id = $3', 
+        [newCredits, newFuel, this.id]);
+      
+      // Record transaction
+      await client.query(`
+        INSERT INTO fuel_transactions (game_id, planet_id, quantity, price_per_unit, total_cost)
+        VALUES ($1, $2, $3, $4, $5)
+      `, [this.id, this.currentPlanetId, quantity, fuelPrice, totalCost]);
+      
+      await client.query('COMMIT');
+      
+      // Update instance state
+      this.credits = newCredits;
+      this.fuel = newFuel;
+      
+      return {
+        success: true,
+        fuelPurchased: quantity,
+        pricePerUnit: fuelPrice,
+        totalCost: totalCost,
+        remainingCredits: newCredits,
+        newFuelLevel: newFuel
+      };
+      
+    } catch (error) {
+      await client.query('ROLLBACK');
+      throw error;
+    } finally {
+      client.release();
+    }
+  }
+
+  async getFuelVendorInfo() {
+    const currentPlanet = await TestPlanet.findById(this.currentPlanetId);
+    const fuelPrice = await currentPlanet.getFuelPrice();
+    
+    const maxByCredits = Math.floor(this.credits / fuelPrice);
+    const maxByCapacity = this.maxFuel - this.fuel;
+    const maxPurchasable = Math.min(maxByCredits, maxByCapacity);
+    
+    return {
+      planetName: currentPlanet.name,
+      fuelPrice: fuelPrice,
+      maxPurchasable: maxPurchasable,
+      playerCredits: this.credits,
+      currentFuel: this.fuel,
+      maxFuel: this.maxFuel
+    };
+  }
+
+  async getFuelTradingHistory() {
+    const result = await testQuery(`
+      SELECT ft.*, p.name as planet_name
+      FROM fuel_transactions ft
+      JOIN planets p ON ft.planet_id = p.id
+      WHERE ft.game_id = $1
+      ORDER BY ft.created_at DESC
+    `, [this.id]);
+    
+    return result.rows.map(row => ({
+      quantity: row.quantity,
+      price: row.price_per_unit,
+      totalCost: row.total_cost,
+      planetName: row.planet_name,
+      timestamp: row.created_at
+    }));
+  }
+
+  async getFuelTradingRecommendations() {
+    const allPlanets = await TestPlanet.findAll();
+    const currentPlanet = await TestPlanet.findById(this.currentPlanetId);
+    const recommendations = [];
+    
+    for (const planet of allPlanets) {
+      if (planet.id === this.currentPlanetId) continue;
+      
+      const planetPrice = await planet.getFuelPrice();
+      const currentPrice = await currentPlanet.getFuelPrice();
+      
+      if (planetPrice < currentPrice) {
+        const travelCost = currentPlanet.fuelCostTo(planet);
+        const savings = currentPrice - planetPrice;
+        
+        recommendations.push({
+          planetName: planet.name,
+          price: planetPrice,
+          savings: savings,
+          travelCost: travelCost,
+          netSavings: savings - (travelCost * currentPrice)
+        });
+      }
+    }
+    
+    return recommendations.sort((a, b) => b.netSavings - a.netSavings);
+  }
+
+  async travelToPlanet(planetId) {
+    const currentPlanet = await TestPlanet.findById(this.currentPlanetId);
+    const destinationPlanet = await TestPlanet.findById(planetId);
+    
+    const fuelCost = currentPlanet.fuelCostTo(destinationPlanet);
+    
+    if (!this.hasEnoughFuel(fuelCost)) {
+      return {
+        success: false,
+        error: 'Insufficient fuel for travel'
+      };
+    }
+    
+    const client = await getTestClient();
+    
+    try {
+      await client.query('BEGIN');
+      
+      const newFuel = this.fuel - fuelCost;
+      const newTurn = this.currentTurn + currentPlanet.travelTimeTo(destinationPlanet);
+      
+      await client.query('UPDATE games SET current_planet_id = $1, fuel = $2, current_turn = $3, turns_used = turns_used + $4 WHERE id = $5', 
+        [planetId, newFuel, newTurn, currentPlanet.travelTimeTo(destinationPlanet), this.id]);
+      
+      await client.query('COMMIT');
+      
+      // Update instance state
+      this.currentPlanetId = planetId;
+      this.fuel = newFuel;
+      this.currentTurn = newTurn;
+      this.turnsUsed += currentPlanet.travelTimeTo(destinationPlanet);
+      
+      return {
+        success: true,
+        fuelConsumed: fuelCost,
+        turnsElapsed: currentPlanet.travelTimeTo(destinationPlanet),
+        newLocation: destinationPlanet.name
+      };
+      
+    } catch (error) {
+      await client.query('ROLLBACK');
+      throw error;
+    } finally {
+      client.release();
+    }
+  }
+
   toJSON() {
     return {
       id: this.id,
@@ -180,6 +365,16 @@ export class TestGame {
       cargoCapacity: this.cargoCapacity,
       planetName: this.planetName,
       planetDescription: this.planetDescription
+    };
+  }
+
+  async toJSONWithFuelPrice() {
+    const currentPlanet = await TestPlanet.findById(this.currentPlanetId);
+    const fuelPrice = await currentPlanet.getFuelPrice();
+    
+    return {
+      ...this.toJSON(),
+      currentPlanetFuelPrice: fuelPrice
     };
   }
 }
@@ -438,6 +633,146 @@ export class TestPlanet {
     }
 
     return score;
+  }
+
+  // Fuel Trading Methods
+  async getFuelPrice() {
+    const basePrice = 5.0; // Base fuel price
+    let planetTypeModifier = 1.0;
+    let distanceModifier = 1.0;
+    
+    // Planet type pricing modifiers
+    const typeModifiers = {
+      'Trade Hub': 0.8,    // 20% discount - competitive pricing
+      'Agricultural': 0.9, // 10% discount - local production
+      'Colony': 0.85,      // 15% discount - simple economy
+      'Mining': 1.2,       // 20% markup - industrial demand
+      'Industrial': 1.15,  // 15% markup - heavy fuel use
+      'Research': 1.1,     // 10% markup - specialized facilities
+      'City': 1.05,        // 5% markup - urban convenience
+      'Military': 1.25,    // 25% markup - restricted access
+      'Forest': 0.95,      // 5% discount - natural resources
+      'Jungle': 0.9        // 10% discount - isolation
+    };
+    
+    if (this.planetType && typeModifiers[this.planetType]) {
+      planetTypeModifier = typeModifiers[this.planetType];
+    }
+    
+    // Distance modifier - distant planets have cheaper fuel
+    if (this.isDistant) {
+      distanceModifier = 0.7; // 30% discount for distant planets
+    }
+    
+    const finalPrice = basePrice * planetTypeModifier * distanceModifier;
+    return Math.round(finalPrice * 100) / 100; // Round to 2 decimal places
+  }
+
+  async getFuelMarketInfo() {
+    const price = await this.getFuelPrice();
+    
+    return {
+      price: price,
+      availability: 'Available',
+      planetName: this.name,
+      planetType: this.planetType || 'Unknown',
+      discount: this.isDistant ? 'Distance discount applied' : null
+    };
+  }
+
+  async calculateFuelCost(quantity) {
+    const pricePerUnit = await this.getFuelPrice();
+    
+    return {
+      quantity: quantity,
+      pricePerUnit: pricePerUnit,
+      totalCost: quantity * pricePerUnit
+    };
+  }
+
+  async getFuelPricingFactors() {
+    const basePrice = 5.0;
+    const priceModifiers = {
+      'Trade Hub': 0.8,
+      'Agricultural': 0.9,
+      'Colony': 0.85,
+      'Mining': 1.2,
+      'Industrial': 1.15,
+      'Research': 1.1,
+      'City': 1.05,
+      'Military': 1.25,
+      'Forest': 0.95,
+      'Jungle': 0.9
+    };
+    
+    const planetTypeModifier = (this.planetType && priceModifiers[this.planetType]) ? priceModifiers[this.planetType] : 1.0;
+    const distanceModifier = this.isDistant ? 0.7 : 1.0;
+    const finalPrice = basePrice * planetTypeModifier * distanceModifier;
+    
+    return {
+      basePrice: basePrice,
+      planetTypeModifier: planetTypeModifier,
+      distanceModifier: distanceModifier,
+      finalPrice: Math.round(finalPrice * 100) / 100
+    };
+  }
+
+  static async getFuelPriceComparison() {
+    const planets = await TestPlanet.findAll();
+    const prices = [];
+    
+    for (const planet of planets) {
+      const price = await planet.getFuelPrice();
+      prices.push({
+        planetName: planet.name,
+        price: price,
+        planetType: planet.planetType,
+        isDistant: planet.isDistant
+      });
+    }
+    
+    prices.sort((a, b) => a.price - b.price);
+    
+    const cheapest = prices[0];
+    const mostExpensive = prices[prices.length - 1];
+    const average = prices.reduce((sum, p) => sum + p.price, 0) / prices.length;
+    const priceRange = mostExpensive.price - cheapest.price;
+    
+    return {
+      cheapest,
+      mostExpensive,
+      average: Math.round(average * 100) / 100,
+      priceRange: Math.round(priceRange * 100) / 100
+    };
+  }
+
+  static async getFuelPriceTrendsByType() {
+    const planets = await TestPlanet.findAll();
+    const trends = {};
+    
+    for (const planet of planets) {
+      const type = planet.planetType || 'Unknown';
+      const price = await planet.getFuelPrice();
+      
+      if (!trends[type]) {
+        trends[type] = {
+          prices: [],
+          planetCount: 0
+        };
+      }
+      
+      trends[type].prices.push(price);
+      trends[type].planetCount++;
+    }
+    
+    // Calculate averages
+    for (const [type, data] of Object.entries(trends)) {
+      const average = data.prices.reduce((sum, price) => sum + price, 0) / data.prices.length;
+      trends[type].averagePrice = Math.round(average * 100) / 100;
+      delete trends[type].prices; // Remove raw prices array
+    }
+    
+    return trends;
   }
 
   toJSON() {

@@ -4,7 +4,8 @@ import testPool from '../src/utils/testDatabase.js';
 // Test database setup and cleanup - ONLY affects sorstar_test database
 const setupTestDatabase = async () => {
   console.log('🧪 Setting up test database (sorstar_test)...');
-  // Clean up all tables for testing in TEST DATABASE ONLY
+  // Clean up all tables for testing in TEST DATABASE ONLY (order matters for foreign keys)
+  await testQuery('DELETE FROM fuel_transactions');
   await testQuery('DELETE FROM transactions');
   await testQuery('DELETE FROM cargo');
   await testQuery('DELETE FROM games');
@@ -17,7 +18,8 @@ const setupTestDatabase = async () => {
 
 const teardownTestDatabase = async () => {
   console.log('🧹 Cleaning up test database (sorstar_test)...');
-  // Clean up after tests in TEST DATABASE ONLY
+  // Clean up after tests in TEST DATABASE ONLY (order matters for foreign keys)
+  await testQuery('DELETE FROM fuel_transactions');
   await testQuery('DELETE FROM transactions');
   await testQuery('DELETE FROM cargo');
   await testQuery('DELETE FROM games');  
@@ -37,6 +39,7 @@ afterAll(async () => {
 
 // Clean up after each test - TEST DATABASE ONLY
 afterEach(async () => {
+  await testQuery('DELETE FROM fuel_transactions');
   await testQuery('DELETE FROM transactions');
   await testQuery('DELETE FROM cargo');
   await testQuery('DELETE FROM games');

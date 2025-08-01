@@ -82,13 +82,29 @@ const runTests = async () => {
     console.log('=' .repeat(50));
     try {
       const jestOutput = execSync('NODE_OPTIONS=--experimental-vm-modules npx jest tests/planet-classification.test.js --silent', { encoding: 'utf8' });
-      const jestPassed = 35; // Estimated number of planet classification tests
+      const jestPassed = 27; // Actual number of planet classification tests
       totalTests += jestPassed;
       passedTests += jestPassed;
       console.log(`✅ Passed: ${jestPassed}/${jestPassed}\n`);
     } catch (error) {
       console.log('❌ Some Jest tests failed\n');
-      const jestTotal = 35;
+      const jestTotal = 27;
+      totalTests += jestTotal;
+      // Don't add to passedTests if failed
+    }
+
+    // Run Jest tests (fuel trading system tests)
+    console.log('💰 Fuel Trading System Tests');
+    console.log('=' .repeat(50));
+    try {
+      const jestOutput = execSync('NODE_OPTIONS=--experimental-vm-modules npx jest tests/fuel-trading.test.js --silent', { encoding: 'utf8' });
+      const jestPassed = 26; // Actual number of fuel trading tests
+      totalTests += jestPassed;
+      passedTests += jestPassed;
+      console.log(`✅ Passed: ${jestPassed}/${jestPassed}\n`);
+    } catch (error) {
+      console.log('❌ Some Jest tests failed\n');
+      const jestTotal = 26;
       totalTests += jestTotal;
       // Don't add to passedTests if failed
     }

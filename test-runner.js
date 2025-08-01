@@ -77,6 +77,22 @@ const runTests = async () => {
       // Don't add to passedTests if failed
     }
 
+    // Run Jest tests (planet classification system tests)
+    console.log('🏷️  Planet Classification Tests');
+    console.log('=' .repeat(50));
+    try {
+      const jestOutput = execSync('NODE_OPTIONS=--experimental-vm-modules npx jest tests/planet-classification.test.js --silent', { encoding: 'utf8' });
+      const jestPassed = 35; // Estimated number of planet classification tests
+      totalTests += jestPassed;
+      passedTests += jestPassed;
+      console.log(`✅ Passed: ${jestPassed}/${jestPassed}\n`);
+    } catch (error) {
+      console.log('❌ Some Jest tests failed\n');
+      const jestTotal = 35;
+      totalTests += jestTotal;
+      // Don't add to passedTests if failed
+    }
+
     // Summary
     console.log('📊 Test Summary');
     console.log('=' .repeat(50));

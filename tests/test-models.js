@@ -260,6 +260,186 @@ export class TestPlanet {
     return result.rows;
   }
 
+  // Planet Classification System methods
+  static getValidPlanetTypes() {
+    return ['Forest', 'Jungle', 'Industrial', 'City', 'Mining', 'Agricultural', 'Colony', 'Trade Hub', 'Research', 'Military'];
+  }
+
+  isValidPlanetType(type) {
+    return TestPlanet.getValidPlanetTypes().includes(type);
+  }
+
+  getValidPlanetTypes() {
+    return TestPlanet.getValidPlanetTypes();
+  }
+
+  async setPlanetType(type) {
+    if (type !== null && !this.isValidPlanetType(type)) {
+      throw new Error('Invalid planet type');
+    }
+    
+    await testQuery('UPDATE planets SET planet_type = $1 WHERE id = $2', [type, this.id]);
+    this.planetType = type;
+  }
+
+  getTypeBasedDescription() {
+    if (!this.planetType) {
+      return 'A mysterious world with unknown characteristics.';
+    }
+
+    const descriptions = {
+      'Forest': 'Dense woodlands cover this planet, with towering trees and rich biodiversity.',
+      'Jungle': 'Thick tropical vegetation dominates this humid world with exotic wildlife.',
+      'Industrial': 'Massive factories and manufacturing facilities define this industrial powerhouse.',
+      'City': 'Urban sprawl extends across continents on this heavily populated metropolitan world.',
+      'Mining': 'Rich mineral deposits make this a vital source of raw materials and ore.',
+      'Agricultural': 'Fertile farmlands and agricultural facilities feed nearby systems.',
+      'Colony': 'A growing settlement representing the expansion of civilization into new frontiers.',
+      'Trade Hub': 'Bustling spaceports and markets make this a center of interstellar commerce.',
+      'Research': 'Advanced laboratories and research facilities push the boundaries of science.',
+      'Military': 'Strategic defense installations and military bases secure this sector.'
+    };
+
+    return descriptions[this.planetType] || 'A unique world with special characteristics.';
+  }
+
+  getRandomTypeDescription(type) {
+    const descriptionVariants = {
+      'Forest': [
+        'Dense woodlands cover this planet, with towering trees and rich biodiversity.',
+        'Ancient forests stretch across continents, home to countless species.',
+        'Pristine wilderness dominates this green world of endless forests.'
+      ],
+      'Mining': [
+        'Rich mineral deposits make this a vital source of raw materials and ore.',
+        'Extensive mining operations extract valuable resources from deep caverns.',
+        'Industrial mining complexes dot the landscape of this resource-rich world.'
+      ]
+    };
+
+    const variants = descriptionVariants[type] || [this.getTypeBasedDescription()];
+    return variants[Math.floor(Math.random() * variants.length)];
+  }
+
+  getFullDescription() {
+    const baseDesc = this.description || '';
+    const typeDesc = this.getTypeBasedDescription();
+    return `${baseDesc} ${typeDesc}`.trim();
+  }
+
+  getPlanetInfo() {
+    return {
+      id: this.id,
+      name: this.name,
+      planetType: this.planetType,
+      baseDescription: this.description,
+      typeDescription: this.getTypeBasedDescription(),
+      fullDescription: this.getFullDescription(),
+      coordinates: {
+        x: this.xCoord,
+        y: this.yCoord,
+        formatted: `(${this.xCoord}, ${this.yCoord})`
+      },
+      isDistant: this.isDistant,
+      specialCharacteristics: this.isDistant ? ['Remote location', 'Lower fuel costs'] : []
+    };
+  }
+
+  static async findByType(type) {
+    const result = await testQuery('SELECT * FROM planets WHERE planet_type = $1 ORDER BY name', [type]);
+    return result.rows.map(row => new TestPlanet(row));
+  }
+
+  static async findByTypes(types) {
+    const placeholders = types.map((_, i) => `$${i + 1}`).join(',');
+    const result = await testQuery(`SELECT * FROM planets WHERE planet_type IN (${placeholders}) ORDER BY name`, types);
+    return result.rows.map(row => new TestPlanet(row));
+  }
+
+  static async findPlanetsForActivity(activity) {
+    const activityToPlanetTypes = {
+      'trading': ['Trade Hub', 'City', 'Industrial'],
+      'mining': ['Mining', 'Industrial'],
+      'research': ['Research', 'City'],
+      'agriculture': ['Agricultural', 'Colony']
+    };
+
+    const relevantTypes = activityToPlanetTypes[activity] || [];
+    if (relevantTypes.length === 0) return [];
+
+    return await this.findByTypes(relevantTypes);
+  }
+
+  static async getGroupedByType() {
+    const allPlanets = await this.findAll();
+    const grouped = {};
+
+    for (const planet of allPlanets) {
+      const type = planet.planetType || 'Unclassified';
+      if (!grouped[type]) {
+        grouped[type] = [];
+      }
+      grouped[type].push(planet);
+    }
+
+    return grouped;
+  }
+
+  static async getPlanetTypeStatistics() {
+    const result = await testQuery(`
+      SELECT planet_type, COUNT(*) as count 
+      FROM planets 
+      GROUP BY planet_type 
+      ORDER BY count DESC
+    `);
+
+    const totalResult = await testQuery('SELECT COUNT(*) as total FROM planets');
+    const totalPlanets = parseInt(totalResult.rows[0].total);
+
+    const typeBreakdown = {};
+    for (const row of result.rows) {
+      const type = row.planet_type || 'Unclassified';
+      typeBreakdown[type] = parseInt(row.count);
+    }
+
+    return {
+      totalPlanets,
+      typeBreakdown
+    };
+  }
+
+  static async getRecommendationsForActivity(activity) {
+    const suitablePlanets = await this.findPlanetsForActivity(activity);
+    
+    // Add additional scoring/filtering logic here if needed
+    return suitablePlanets.map(planet => ({
+      ...planet.getPlanetInfo(),
+      recommendationScore: this.calculateRecommendationScore(planet, activity)
+    })).sort((a, b) => b.recommendationScore - a.recommendationScore);
+  }
+
+  static calculateRecommendationScore(planet, activity) {
+    let score = 50; // Base score
+
+    // Adjust based on planet type relevance
+    const typeScores = {
+      'trading': { 'Trade Hub': 100, 'City': 80, 'Industrial': 60 },
+      'mining': { 'Mining': 100, 'Industrial': 70 },
+      'research': { 'Research': 100, 'City': 60 },
+      'agriculture': { 'Agricultural': 100, 'Colony': 70 }
+    };
+
+    const activityScores = typeScores[activity] || {};
+    score = activityScores[planet.planetType] || score;
+
+    // Reduce score for distant planets (harder to reach)
+    if (planet.isDistant) {
+      score *= 0.8;
+    }
+
+    return score;
+  }
+
   toJSON() {
     return {
       id: this.id,

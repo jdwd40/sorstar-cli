@@ -44,6 +44,39 @@ const runTests = async () => {
     passedTests += gameplayResults.passed;
     console.log(`✅ Passed: ${gameplayResults.passed}/${gameplayResults.total}\n`);
 
+    // Run Jest tests (fuel system tests)
+    console.log('⛽ Fuel System Tests');
+    console.log('=' .repeat(50));
+    const { execSync } = await import('child_process');
+    try {
+      const jestOutput = execSync('NODE_OPTIONS=--experimental-vm-modules npx jest tests/fuel-system.test.js --silent', { encoding: 'utf8' });
+      const jestPassed = 25; // We know there are 25 fuel system tests
+      totalTests += jestPassed;
+      passedTests += jestPassed;
+      console.log(`✅ Passed: ${jestPassed}/${jestPassed}\n`);
+    } catch (error) {
+      console.log('❌ Some Jest tests failed\n');
+      const jestTotal = 25;
+      totalTests += jestTotal;
+      // Don't add to passedTests if failed
+    }
+
+    // Run Jest tests (planet distance system tests)
+    console.log('🌍 Planet Distance & Geography Tests');
+    console.log('=' .repeat(50));
+    try {
+      const jestOutput = execSync('NODE_OPTIONS=--experimental-vm-modules npx jest tests/test-planet-distance.test.js --silent', { encoding: 'utf8' });
+      const jestPassed = 27; // Actual number of planet distance tests
+      totalTests += jestPassed;
+      passedTests += jestPassed;
+      console.log(`✅ Passed: ${jestPassed}/${jestPassed}\n`);
+    } catch (error) {
+      console.log('❌ Some Jest tests failed\n');
+      const jestTotal = 27;
+      totalTests += jestTotal;
+      // Don't add to passedTests if failed
+    }
+
     // Summary
     console.log('📊 Test Summary');
     console.log('=' .repeat(50));

@@ -62,9 +62,20 @@ const setupTestTables = async () => {
         current_planet_id INTEGER REFERENCES planets(id),
         credits INTEGER DEFAULT 1000,
         turns_used INTEGER DEFAULT 0,
+        fuel INTEGER DEFAULT 100,
+        max_fuel INTEGER DEFAULT 100,
+        current_turn INTEGER DEFAULT 0,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
+    `);
+
+    // Add columns if they don't exist (for existing tables)
+    await testQuery(`
+      ALTER TABLE games 
+      ADD COLUMN IF NOT EXISTS fuel INTEGER DEFAULT 100,
+      ADD COLUMN IF NOT EXISTS max_fuel INTEGER DEFAULT 100,
+      ADD COLUMN IF NOT EXISTS current_turn INTEGER DEFAULT 0;
     `);
 
     await testQuery(`

@@ -9,6 +9,9 @@ export class Game {
     this.currentPlanetId = data.current_planet_id;
     this.credits = data.credits;
     this.turnsUsed = data.turns_used;
+    this.fuel = data.fuel || 100;
+    this.maxFuel = data.max_fuel || 100;
+    this.currentTurn = data.current_turn || 0;
     this.createdAt = data.created_at;
     this.updatedAt = data.updated_at;
     
@@ -49,8 +52,8 @@ export class Game {
     const startingPlanet = await Planet.findByName('Terra Nova');
     
     const result = await query(
-      'INSERT INTO games (user_id, ship_id, current_planet_id, credits) VALUES ($1, $2, $3, $4) RETURNING *',
-      [userId, shipId, startingPlanet.id, 1000]
+      'INSERT INTO games (user_id, ship_id, current_planet_id, credits, fuel, max_fuel, current_turn) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *',
+      [userId, shipId, startingPlanet.id, 1000, 100, 100, 0]
     );
     
     return new Game(result.rows[0]);
@@ -146,6 +149,52 @@ export class Game {
     }
   }
 
+  async consumeFuel(amount) {
+    const newFuel = Math.max(0, this.fuel - amount);
+    await query('UPDATE games SET fuel = $1 WHERE id = $2', [newFuel, this.id]);
+    this.fuel = newFuel;
+  }
+
+  async addFuel(amount) {
+    const newFuel = Math.min(this.maxFuel, this.fuel + amount);
+    await query('UPDATE games SET fuel = $1 WHERE id = $2', [newFuel, this.id]);
+    this.fuel = newFuel;
+  }
+
+  hasEnoughFuel(amount) {
+    return this.fuel >= amount;
+  }
+
+  async advanceTurn() {
+    const newTurn = this.currentTurn + 1;
+    await query('UPDATE games SET current_turn = $1 WHERE id = $2', [newTurn, this.id]);
+    this.currentTurn = newTurn;
+  }
+
+  async consumeFuelAndAdvanceTurn(fuelAmount) {
+    const client = await getClient();
+    
+    try {
+      await client.query('BEGIN');
+      
+      const newFuel = Math.max(0, this.fuel - fuelAmount);
+      const newTurn = this.currentTurn + 1;
+      
+      await client.query('UPDATE games SET fuel = $1, current_turn = $2 WHERE id = $3', [newFuel, newTurn, this.id]);
+      
+      await client.query('COMMIT');
+      
+      // Update instance state
+      this.fuel = newFuel;
+      this.currentTurn = newTurn;
+    } catch (error) {
+      await client.query('ROLLBACK');
+      throw error;
+    } finally {
+      client.release();
+    }
+  }
+
   toJSON() {
     return {
       id: this.id,
@@ -154,6 +203,9 @@ export class Game {
       currentPlanetId: this.currentPlanetId,
       credits: this.credits,
       turnsUsed: this.turnsUsed,
+      fuel: this.fuel,
+      maxFuel: this.maxFuel,
+      currentTurn: this.currentTurn,
       createdAt: this.createdAt,
       updatedAt: this.updatedAt,
       shipName: this.shipName,

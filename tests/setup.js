@@ -1,4 +1,5 @@
 import { testQuery, getTestClient } from '../src/utils/testDatabase.js';
+import testPool from '../src/utils/testDatabase.js';
 
 // Test database setup and cleanup - ONLY affects sorstar_test database
 const setupTestDatabase = async () => {
@@ -30,6 +31,8 @@ beforeAll(async () => {
 
 afterAll(async () => {
   await teardownTestDatabase();
+  // Close the database connection pool to prevent Jest from hanging
+  await testPool.end();
 });
 
 // Clean up after each test - TEST DATABASE ONLY

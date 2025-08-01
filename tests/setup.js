@@ -5,6 +5,9 @@ import testPool from '../src/utils/testDatabase.js';
 const setupTestDatabase = async () => {
   console.log('🧪 Setting up test database (sorstar_test)...');
   // Clean up all tables for testing in TEST DATABASE ONLY (order matters for foreign keys)
+  await testQuery('DELETE FROM commodity_transactions');
+  await testQuery('DELETE FROM futures_contracts');
+  await testQuery('DELETE FROM price_alerts');
   await testQuery('DELETE FROM fuel_transactions');
   await testQuery('DELETE FROM transactions');
   await testQuery('DELETE FROM cargo');
@@ -19,6 +22,9 @@ const setupTestDatabase = async () => {
 const teardownTestDatabase = async () => {
   console.log('🧹 Cleaning up test database (sorstar_test)...');
   // Clean up after tests in TEST DATABASE ONLY (order matters for foreign keys)
+  await testQuery('DELETE FROM commodity_transactions');
+  await testQuery('DELETE FROM futures_contracts');
+  await testQuery('DELETE FROM price_alerts');
   await testQuery('DELETE FROM fuel_transactions');
   await testQuery('DELETE FROM transactions');
   await testQuery('DELETE FROM cargo');
@@ -39,6 +45,9 @@ afterAll(async () => {
 
 // Clean up after each test - TEST DATABASE ONLY
 afterEach(async () => {
+  await testQuery('DELETE FROM commodity_transactions');
+  await testQuery('DELETE FROM futures_contracts');
+  await testQuery('DELETE FROM price_alerts');
   await testQuery('DELETE FROM fuel_transactions');
   await testQuery('DELETE FROM transactions');
   await testQuery('DELETE FROM cargo');

@@ -109,6 +109,22 @@ const runTests = async () => {
       // Don't add to passedTests if failed
     }
 
+    // Run Jest tests (commodities system tests)
+    console.log('📦 Commodities System Tests');
+    console.log('=' .repeat(50));
+    try {
+      const jestOutput = execSync('NODE_OPTIONS=--experimental-vm-modules npx jest tests/commodities-system.test.js --silent', { encoding: 'utf8' });
+      const jestPassed = 30; // Actual number of commodities system tests
+      totalTests += jestPassed;
+      passedTests += jestPassed;
+      console.log(`✅ Passed: ${jestPassed}/${jestPassed}\n`);
+    } catch (error) {
+      console.log('❌ Some Jest tests failed\n');
+      const jestTotal = 30;
+      totalTests += jestTotal;
+      // Don't add to passedTests if failed
+    }
+
     // Summary
     console.log('📊 Test Summary');
     console.log('=' .repeat(50));

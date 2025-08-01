@@ -45,6 +45,7 @@ afterAll(async () => {
 
 // Clean up after each test - TEST DATABASE ONLY
 afterEach(async () => {
+  // Delete in correct order to avoid foreign key violations
   await testQuery('DELETE FROM commodity_transactions');
   await testQuery('DELETE FROM futures_contracts');
   await testQuery('DELETE FROM price_alerts');

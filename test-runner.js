@@ -125,6 +125,22 @@ const runTests = async () => {
       // Don't add to passedTests if failed
     }
 
+    // Run Jest tests (integration & polish tests)
+    console.log('🔧 Integration & Polish Tests');
+    console.log('=' .repeat(50));
+    try {
+      const jestOutput = execSync('NODE_OPTIONS=--experimental-vm-modules npx jest tests/integration-polish.test.js --silent', { encoding: 'utf8' });
+      const jestPassed = 26; // Actual number of integration & polish tests
+      totalTests += jestPassed;
+      passedTests += jestPassed;
+      console.log(`✅ Passed: ${jestPassed}/${jestPassed}\n`);
+    } catch (error) {
+      console.log('❌ Some Jest tests failed\n');
+      const jestTotal = 26;
+      totalTests += jestTotal;
+      // Don't add to passedTests if failed
+    }
+
     // Summary
     console.log('📊 Test Summary');
     console.log('=' .repeat(50));

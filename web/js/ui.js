@@ -81,11 +81,21 @@ export class UI {
     static updateGameStats(gameState) {
         if (!gameState) return;
         
+        // Build fuel display
+        let fuelDisplay = '';
+        if (gameState.fuel) {
+            const fuelPercentage = Math.round((gameState.fuel.currentFuel / gameState.fuel.maxFuel) * 100);
+            const fuelColor = fuelPercentage > 50 ? 'var(--success-color)' : 
+                             fuelPercentage > 25 ? 'orange' : 'var(--error-color)';
+            fuelDisplay = `<div>⛽ <strong>Fuel:</strong> <span style="color: ${fuelColor};">${gameState.fuel.currentFuel}/${gameState.fuel.maxFuel} (${fuelPercentage}%)</span></div>`;
+        }
+        
         const statsHtml = `
             <div>💰 <strong>Credits:</strong> ${gameState.credits.toLocaleString()}</div>
             <div>🌍 <strong>Location:</strong> ${gameState.planetName}</div>
             <div>🚀 <strong>Ship:</strong> ${gameState.shipName}</div>
             <div>📦 <strong>Cargo:</strong> ${gameState.totalCargo || 0}/${gameState.cargoCapacity} units</div>
+            ${fuelDisplay}
             <div>⏱️ <strong>Turns Used:</strong> ${gameState.turnsUsed}</div>
             <div>👨‍🚀 <strong>Pilot:</strong> ${gameState.username || 'Unknown'}</div>
         `;

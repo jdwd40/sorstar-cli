@@ -395,6 +395,20 @@ export class Planet {
     return trends;
   }
 
+  async getCommoditySpecialties() {
+    // Return commodity specialties based on planet type
+    const specialties = {
+      'Forest': ['Food', 'Bio-Materials', 'Oxygen'],
+      'Jungle': ['Exotic Foods', 'Medicines', 'Bio-Tech'],
+      'Industrial': ['Metals', 'Machinery', 'Electronics'],
+      'City': ['Consumer Goods', 'Services', 'Information'],
+      'Mining': ['Raw Materials', 'Minerals', 'Fuel'],
+      'Agricultural': ['Food Supplies', 'Seeds', 'Livestock']
+    };
+
+    return specialties[this.planetType || 'City'] || ['General Goods'];
+  }
+
   toJSON() {
     return {
       id: this.id,

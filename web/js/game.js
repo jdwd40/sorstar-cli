@@ -166,60 +166,6 @@ export class GameManager {
         }
     }
 
-    async showCargo() {
-        UI.showLoading('📦 Loading cargo inventory...');
-        
-        try {
-            const cargo = await this.api.getCargo();
-            
-            let html = `
-                <h3>📦 Cargo Hold</h3>
-                <div style="margin-bottom: 15px; color: var(--secondary-text); padding: 10px; background: var(--accent-bg); border-radius: var(--radius);">
-                    📍 <strong>Location:</strong> ${this.gameState.planetName} | 
-                    💳 <strong>Credits:</strong> ${UI.formatCurrency(this.gameState.credits)} | 
-                    📦 <strong>Cargo:</strong> ${cargo.totalCargo}/${cargo.cargoCapacity} units (${UI.formatPercentage(cargo.totalCargo, cargo.cargoCapacity)}% full)
-                </div>
-            `;
-            
-            if (cargo.cargo.length === 0) {
-                html += UI.createEmptyState('📦', 'Your cargo hold is empty.', 'Visit the market to buy commodities!');
-            } else {
-                // Get market prices for value estimation
-                let marketPrices = {};
-                try {
-                    const market = await this.api.getMarketPrices(this.gameState.currentPlanetId);
-                    market.forEach(item => {
-                        marketPrices[item.commodity_id] = item.sell_price;
-                    });
-                } catch (e) {
-                    // Market prices unavailable
-                }
-                
-                const headers = ['Commodity', 'Quantity', 'Est. Value', 'Actions'];
-                const rows = cargo.cargo.map(item => {
-                    const estimatedValue = marketPrices[item.commodity_id] ? 
-                        marketPrices[item.commodity_id] * item.quantity : null;
-                    
-                    return [
-                        `<strong>${item.commodity_name}</strong>`,
-                        `${item.quantity} units`,
-                        estimatedValue ? 
-                            `<span style="color: var(--success-color);">${UI.formatCurrency(estimatedValue)}</span>` : 
-                            '<span style="color: #666;">Unknown</span>',
-                        `<button onclick="gameManager.openSellModal(${item.commodity_id}, '${item.commodity_name}', ${item.quantity})">
-                            💼 Sell
-                        </button>`
-                    ];
-                });
-                
-                html += UI.createTable(headers, rows);
-            }
-            
-            document.getElementById('game-content').innerHTML = html;
-        } catch (error) {
-            document.getElementById('game-content').innerHTML = `<div class="error">Error loading cargo: ${error.message}</div>`;
-        }
-    }
 
     async showPlanets() {
         UI.showLoading('🌍 Loading planetary data...');
@@ -751,7 +697,7 @@ export class GameManager {
         } catch (error) {
             console.error('Enhanced market error:', error);
             // Fallback to basic market display
-            await this.showMarket();
+            await this.showBasicMarket();
         }
     }
 
@@ -856,5 +802,323 @@ export class GameManager {
         return commodities.filter(commodity => 
             commodity.availability === targetAvailability
         );
+    }
+
+    // Enhanced Cargo Management Methods
+    async showCargo() {
+        // Use enhanced cargo view by default, with fallback to basic view
+        try {
+            await this.showEnhancedCargo();
+        } catch (error) {
+            console.warn('Enhanced cargo failed, falling back to basic cargo:', error.message);
+            await this.showBasicCargo();
+        }
+    }
+
+    async showEnhancedCargo() {
+        if (!this.gameState) return;
+        
+        UI.showLoading('📦 Loading enhanced cargo inventory...');
+        
+        try {
+            // Get all required data concurrently
+            const [cargo, commodityCategories, marketPrices] = await Promise.all([
+                this.api.getCargo(),
+                this.loadCommodityCategories(),
+                this.api.getMarketPrices(this.gameState.currentPlanetId).catch(() => [])
+            ]);
+
+            let html = `
+                <h3>📦 Enhanced Cargo Hold</h3>
+                <div style="margin-bottom: 15px; color: var(--secondary-text); padding: 10px; background: var(--accent-bg); border-radius: var(--radius);">
+                    📍 <strong>Location:</strong> ${this.gameState.planetName} | 
+                    💳 <strong>Credits:</strong> ${UI.formatCurrency(this.gameState.credits)} | 
+                    📦 <strong>Cargo:</strong> ${cargo.totalCargo}/${cargo.cargoCapacity} units (${UI.formatPercentage(cargo.totalCargo, cargo.cargoCapacity)}% full)
+                </div>
+            `;
+
+            if (cargo.cargo.length === 0) {
+                html += UI.createEmptyState('📦', 'Your cargo hold is empty.', 'Visit the market to buy commodities!');
+            } else {
+                // Process cargo with prices and categories
+                const groupedCargo = await this.processCargoWithPrices(cargo.cargo, commodityCategories, marketPrices);
+                
+                // Add cargo summary
+                const cargoSummary = this.calculateCargoSummary(groupedCargo);
+                html += this.createCargoSummaryDisplay(cargoSummary);
+
+                // Add sort controls
+                html += UI.createCargoSortControls(['category', 'quantity', 'value', 'name']);
+
+                // Display each category
+                for (const [categoryName, categoryData] of Object.entries(groupedCargo)) {
+                    if (categoryData.items.length === 0) continue;
+
+                    // Category header with statistics
+                    const categoryStats = this.calculateCategoryStatistics({[categoryName]: categoryData});
+                    html += UI.createCargoCategoryHeader(categoryData.category, categoryStats[categoryName]);
+
+                    // Category items table
+                    const headers = ['Commodity', 'Quantity & Origin', 'Current Value', 'Best Market', 'Actions'];
+                    const rows = categoryData.items.map(item => [
+                        `<div><strong>${item.commodity_name}</strong></div>
+                         <div style="font-size: 0.9em; color: var(--secondary-text);">${UI.getCommodityCategory({category: categoryName})}</div>`,
+                        
+                        `<div><strong>${item.quantity}</strong> units</div>
+                         ${UI.getCommodityOriginDisplay(item)}`,
+                        
+                        `<div style="color: var(--success-color); font-weight: bold;">
+                            ${item.estimatedValue ? UI.formatCurrency(item.estimatedValue) : 'Unknown'}
+                         </div>
+                         <div style="font-size: 0.9em; color: #666;">
+                            ${item.estimatedValue ? `${UI.formatCurrency(Math.round(item.estimatedValue / item.quantity))} per unit` : ''}
+                         </div>`,
+                        
+                        UI.getOptimalSellingLocation(item, item.allPlanetPrices || []),
+                        
+                        `<button onclick="gameManager.openSellModal(${item.commodity_id}, '${item.commodity_name}', ${item.quantity})">
+                            💼 Sell
+                         </button>`
+                    ]);
+
+                    html += UI.createTable(headers, rows);
+
+                    // Add bulk sell button for category
+                    html += `<div style="margin-bottom: 20px; text-align: right;">
+                        ${UI.createBulkSellButton(categoryName, categoryData.items)}
+                    </div>`;
+                }
+            }
+            
+            document.getElementById('game-content').innerHTML = html;
+        } catch (error) {
+            console.error('Enhanced cargo error:', error);
+            // Fallback to basic cargo display
+            await this.showBasicCargo();
+        }
+    }
+
+    async showBasicCargo() {
+        UI.showLoading('📦 Loading cargo inventory...');
+        
+        try {
+            const cargo = await this.api.getCargo();
+            
+            let html = `
+                <h3>📦 Cargo Hold</h3>
+                <div style="margin-bottom: 15px; color: var(--secondary-text); padding: 10px; background: var(--accent-bg); border-radius: var(--radius);">
+                    📍 <strong>Location:</strong> ${this.gameState.planetName} | 
+                    💳 <strong>Credits:</strong> ${UI.formatCurrency(this.gameState.credits)} | 
+                    📦 <strong>Cargo:</strong> ${cargo.totalCargo}/${cargo.cargoCapacity} units (${UI.formatPercentage(cargo.totalCargo, cargo.cargoCapacity)}% full)
+                </div>
+            `;
+            
+            if (cargo.cargo.length === 0) {
+                html += UI.createEmptyState('📦', 'Your cargo hold is empty.', 'Visit the market to buy commodities!');
+            } else {
+                // Get market prices for value estimation
+                let marketPrices = {};
+                try {
+                    const market = await this.api.getMarketPrices(this.gameState.currentPlanetId);
+                    market.forEach(item => {
+                        marketPrices[item.commodity_id] = item.sell_price;
+                    });
+                } catch (e) {
+                    // Market prices unavailable
+                }
+                
+                const headers = ['Commodity', 'Quantity', 'Est. Value', 'Actions'];
+                const rows = cargo.cargo.map(item => {
+                    const estimatedValue = marketPrices[item.commodity_id] ? 
+                        marketPrices[item.commodity_id] * item.quantity : null;
+                    
+                    return [
+                        `<strong>${item.commodity_name}</strong>`,
+                        `${item.quantity} units`,
+                        estimatedValue ? 
+                            `<span style="color: var(--success-color);">${UI.formatCurrency(estimatedValue)}</span>` : 
+                            '<span style="color: #666;">Unknown</span>',
+                        `<button onclick="gameManager.openSellModal(${item.commodity_id}, '${item.commodity_name}', ${item.quantity})">
+                            💼 Sell
+                        </button>`
+                    ];
+                });
+                
+                html += UI.createTable(headers, rows);
+            }
+            
+            document.getElementById('game-content').innerHTML = html;
+        } catch (error) {
+            document.getElementById('game-content').innerHTML = `<div class="error">Error loading cargo: ${error.message}</div>`;
+        }
+    }
+
+    async processCargoWithPrices(cargoItems, categories, marketPrices) {
+        // Create price lookup
+        const priceMap = {};
+        if (marketPrices && Array.isArray(marketPrices)) {
+            marketPrices.forEach(item => {
+                priceMap[item.commodity_id] = item.sell_price;
+            });
+        }
+
+        // Add estimated values to cargo items
+        const enrichedCargo = cargoItems.map(item => ({
+            ...item,
+            estimatedValue: priceMap[item.commodity_id] ? priceMap[item.commodity_id] * item.quantity : null,
+            pricePerUnit: priceMap[item.commodity_id] || null
+        }));
+
+        // Group by category
+        return this.groupCargoByCategory(enrichedCargo, categories);
+    }
+
+    groupCargoByCategory(cargoItems, categories) {
+        const grouped = {};
+        
+        // Group items by category
+        cargoItems.forEach(item => {
+            const category = this.findCommodityCategory(item.commodity_name, categories);
+            const categoryName = category ? category.name : 'Other';
+            
+            if (!grouped[categoryName]) {
+                grouped[categoryName] = {
+                    category: category || { name: 'Other', icon: '📦', color: '#666', description: 'Miscellaneous items' },
+                    items: [],
+                    totalQuantity: 0,
+                    totalValue: 0
+                };
+            }
+
+            grouped[categoryName].items.push(item);
+            grouped[categoryName].totalQuantity += item.quantity;
+            grouped[categoryName].totalValue += item.estimatedValue || 0;
+        });
+
+        return grouped;
+    }
+
+    calculateCargoStatistics(groupedCargo) {
+        const stats = {};
+        const totalQuantity = Object.values(groupedCargo).reduce((sum, cat) => sum + cat.totalQuantity, 0);
+        const totalValue = Object.values(groupedCargo).reduce((sum, cat) => sum + cat.totalValue, 0);
+
+        Object.entries(groupedCargo).forEach(([categoryName, categoryData]) => {
+            stats[categoryName] = {
+                itemCount: categoryData.items.length,
+                totalQuantity: categoryData.totalQuantity,
+                totalValue: categoryData.totalValue,
+                averageValue: categoryData.items.length > 0 ? categoryData.totalValue / categoryData.items.length : 0,
+                percentageByQuantity: totalQuantity > 0 ? Math.round((categoryData.totalQuantity / totalQuantity) * 100) : 0,
+                percentageByValue: totalValue > 0 ? Math.round((categoryData.totalValue / totalValue) * 100) : 0
+            };
+        });
+
+        return stats;
+    }
+
+    calculateCargoSummary(groupedCargo) {
+        const totalQuantity = Object.values(groupedCargo).reduce((sum, cat) => sum + cat.totalQuantity, 0);
+        const totalValue = Object.values(groupedCargo).reduce((sum, cat) => sum + cat.totalValue, 0);
+        const categoryCount = Object.keys(groupedCargo).length;
+
+        // Find most valuable and largest categories
+        let mostValuableCategory = '';
+        let largestCategory = '';
+        let maxValue = 0;
+        let maxQuantity = 0;
+
+        Object.entries(groupedCargo).forEach(([categoryName, categoryData]) => {
+            if (categoryData.totalValue > maxValue) {
+                maxValue = categoryData.totalValue;
+                mostValuableCategory = categoryName;
+            }
+            if (categoryData.totalQuantity > maxQuantity) {
+                maxQuantity = categoryData.totalQuantity;
+                largestCategory = categoryName;
+            }
+        });
+
+        return {
+            totalQuantity,
+            totalValue,
+            categoryCount,
+            mostValuableCategory,
+            largestCategory
+        };
+    }
+
+    createCargoSummaryDisplay(cargoSummary) {
+        return `
+            <div style="margin-bottom: 20px; padding: 15px; background: var(--primary-bg); border-radius: var(--radius); border: 2px solid var(--accent-color);">
+                <h4>📊 Cargo Summary</h4>
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px;">
+                    <div>
+                        <strong>Total Value:</strong> <span style="color: var(--success-color);">${UI.formatCurrency(cargoSummary.totalValue)}</span>
+                    </div>
+                    <div>
+                        <strong>Categories:</strong> ${cargoSummary.categoryCount}
+                    </div>
+                    <div>
+                        <strong>Most Valuable:</strong> ${cargoSummary.mostValuableCategory || 'None'}
+                    </div>
+                    <div>
+                        <strong>Largest by Volume:</strong> ${cargoSummary.largestCategory || 'None'}
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+
+    filterCargoByCategory(cargoItems, categoryName, categories) {
+        const category = categories.find(cat => cat.name === categoryName);
+        if (!category) return [];
+
+        return cargoItems.filter(item => 
+            category.commodities.includes(item.commodity_name)
+        );
+    }
+
+    getCargoRecommendations(groupedCargo, cargoCapacity, currentTotal) {
+        const spacesAvailable = cargoCapacity - currentTotal;
+        const totalValue = Object.values(groupedCargo).reduce((sum, cat) => sum + cat.totalValue, 0);
+        
+        // Find most profitable category
+        let mostProfitableCategory = '';
+        let maxProfitability = 0;
+        
+        Object.entries(groupedCargo).forEach(([categoryName, categoryData]) => {
+            const profitability = categoryData.totalValue / categoryData.totalQuantity;
+            if (profitability > maxProfitability) {
+                maxProfitability = profitability;
+                mostProfitableCategory = categoryName;
+            }
+        });
+
+        return {
+            spacesAvailable,
+            mostProfitableCategory,
+            totalValue,
+            diversification: Object.keys(groupedCargo).length > 2 ? 'Good' : 'Consider more variety',
+            optimization: spacesAvailable > cargoCapacity * 0.2 ? 'Fill remaining space' : 'Consider selling low-value items'
+        };
+    }
+
+    // Cargo management actions
+    async bulkSellCategory(categoryName, commodityIds) {
+        try {
+            UI.showLoading(`💼 Selling all ${categoryName} items...`);
+            
+            // Implement bulk selling logic here
+            // For now, show confirmation
+            UI.showMessage(`Bulk selling ${categoryName} items not yet implemented`, 'info');
+        } catch (error) {
+            UI.showMessage(`Bulk sell failed: ${error.message}`, 'error');
+        }
+    }
+
+    sortCargoBy(sortType) {
+        // Implement cargo sorting logic here
+        UI.showMessage(`Sorting by ${sortType} not yet implemented`, 'info');
     }
 }

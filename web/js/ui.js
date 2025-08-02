@@ -317,4 +317,108 @@ export class UI {
     static getCommodityCategory(commodity) {
         return commodity.category || 'Uncategorized';
     }
+
+    // Enhanced Cargo Display Methods
+    static createCargoCategoryHeader(category, cargoStats) {
+        const percentageDisplay = cargoStats.percentageByQuantity ? `${cargoStats.percentageByQuantity}%` : '';
+        const valueDisplay = cargoStats.totalValue ? UI.formatCurrency(cargoStats.totalValue) : 'Unknown';
+
+        return `
+            <div class="cargo-category-header" style="background-color: ${category.color || '#666'}; border-radius: var(--radius); padding: 12px; margin: 20px 0 10px 0;">
+                <div style="display: flex; align-items: center; justify-content: space-between;">
+                    <div style="display: flex; align-items: center; gap: 12px;">
+                        <span style="font-size: 1.8em;">${category.icon || '📦'}</span>
+                        <div>
+                            <h4 style="margin: 0; color: white;">${category.name}</h4>
+                            <div style="font-size: 0.9em; opacity: 0.9; color: white;">${cargoStats.itemCount || 0} types • ${cargoStats.totalQuantity || 0} units</div>
+                        </div>
+                    </div>
+                    <div style="text-align: right; color: white;">
+                        <div style="font-size: 1.1em; font-weight: bold;">${valueDisplay}</div>
+                        <div style="font-size: 0.9em; opacity: 0.9;">${percentageDisplay} of cargo</div>
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+
+    static getOptimalSellingLocation(commodity, allPlanetPrices) {
+        if (!allPlanetPrices || allPlanetPrices.length === 0) {
+            return '<span style="color: #666;">No price data available</span>';
+        }
+
+        const bestLocation = allPlanetPrices.reduce((best, current) => 
+            current.price > best.price ? current : best
+        );
+
+        const profitDifference = allPlanetPrices.length > 1 ? 
+            bestLocation.price - Math.min(...allPlanetPrices.map(p => p.price)) : 0;
+
+        return `
+            <div style="font-size: 0.9em;">
+                <div style="color: var(--success-color); font-weight: bold;">
+                    🏆 ${bestLocation.planetName}: ${UI.formatCurrency(bestLocation.price)}
+                </div>
+                ${profitDifference > 0 ? 
+                    `<div style="color: #666; font-size: 0.8em;">+${UI.formatCurrency(profitDifference)} vs worst</div>` : 
+                    ''
+                }
+            </div>
+        `;
+    }
+
+    static getCommodityOriginDisplay(commodity) {
+        if (!commodity.originPlanet) {
+            return '<span style="color: #666;">Unknown origin</span>';
+        }
+
+        const planetTypeIcons = {
+            'Forest': '🌲',
+            'Industrial': '🏭',
+            'Agricultural': '🌾',
+            'Mining': '⛏️',
+            'Trade Hub': '🏛️',
+            'Research': '🔬',
+            'City': '🏙️',
+            'Desert': '🏜️',
+            'Ocean': '🌊'
+        };
+
+        const icon = planetTypeIcons[commodity.originPlanetType] || '🌍';
+
+        return `
+            <div style="font-size: 0.9em; color: var(--secondary-text);">
+                <div>${icon} ${commodity.originPlanet}</div>
+                <div style="font-size: 0.8em; opacity: 0.8;">${commodity.originPlanetType || 'Unknown'} world</div>
+            </div>
+        `;
+    }
+
+    static createCargoSortControls(sortOptions) {
+        const options = sortOptions.map(option => {
+            const label = option.charAt(0).toUpperCase() + option.slice(1);
+            return `<button onclick="gameManager.sortCargoBy('${option}')" class="sort-btn">${label}</button>`;
+        }).join('');
+
+        return `
+            <div class="cargo-sort-controls" style="margin: 15px 0; padding: 10px; background: var(--accent-bg); border-radius: var(--radius);">
+                <span style="margin-right: 10px;">Sort by:</span>
+                ${options}
+            </div>
+        `;
+    }
+
+    static createBulkSellButton(categoryName, items) {
+        const totalQuantity = items.reduce((sum, item) => sum + item.quantity, 0);
+        const itemNames = items.map(item => item.commodity_name).join(', ');
+
+        return `
+            <button onclick="gameManager.bulkSellCategory('${categoryName}', [${items.map(item => item.commodity_id).join(',')}])" 
+                    class="bulk-sell-btn"
+                    title="Sell: ${itemNames}"
+                    style="background-color: var(--error-color); color: white; padding: 8px 12px; border-radius: var(--radius); border: none; margin-left: 10px;">
+                💼 Sell All ${categoryName} (${totalQuantity} units)
+            </button>
+        `;
+    }
 }

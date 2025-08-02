@@ -1,0 +1,86 @@
+name: Deploy to VPS
+
+on:
+  push:
+    branches: [ master ]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        cache: 'npm'
+        
+    - name: Install dependencies
+      run: npm install
+      
+    - name: Build frontend
+      run: |
+        # Build the frontend static files
+        mkdir -p dist
+        cp -r web/* dist/
+        
+    - name: Deploy to VPS
+      uses: appleboy/ssh-action@v0.1.7
+      with:
+        host: ${{ secrets.VPS_HOST }}
+        username: ${{ secrets.VPS_USERNAME }}
+        key: ${{ secrets.ssh_private_key }}
+        port: ${{ secrets.VPS_PORT }}
+        script: |
+          # Stop existing sorstar service if running
+          pm2 stop sorstar || true
+          pm2 delete sorstar || true
+          
+          # Create directories
+          mkdir -p /home/jd/sorstar
+          mkdir -p /var/www/jdwd40.com/html/sorstar
+          
+          # Backup current deployment
+          if [ -d "/home/jd/sorstar_backup" ]; then
+            rm -rf /home/jd/sorstar_backup
+          fi
+          if [ -d "/home/jd/sorstar" ]; then
+            cp -r /home/jd/sorstar /home/jd/sorstar_backup
+          fi
+          
+    - name: Copy files to VPS
+      uses: appleboy/scp-action@v0.1.4
+      with:
+        host: ${{ secrets.VPS_HOST }}
+        username: ${{ secrets.VPS_USERNAME }}
+        key: ${{ secrets.ssh_private_key }}
+        port: ${{ secrets.VPS_PORT }}
+        source: "."
+        target: "/home/jd/sorstar"
+        rm: true
+        
+    - name: Start application
+      uses: appleboy/ssh-action@v0.1.7
+      with:
+        host: ${{ secrets.VPS_HOST }}
+        username: ${{ secrets.VPS_USERNAME }}
+        key: ${{ secrets.ssh_private_key }}
+        port: ${{ secrets.VPS_PORT }}
+        script: |
+          cd /home/jd/sorstar
+          
+          # Install backend dependencies
+          npm install
+          
+          # Copy frontend files to web directory
+          cp -r dist/* /var/www/jdwd40.com/html/sorstar/
+          
+          # Start backend with PM2 on port 3010
+          PORT=3010 pm2 start server.js --name sorstar
+          pm2 save
+          
+          # Restart nginx to pick up any config changes
+          sudo systemctl reload nginx

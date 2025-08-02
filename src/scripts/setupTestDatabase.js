@@ -62,9 +62,20 @@ const setupTestTables = async () => {
         current_planet_id INTEGER REFERENCES planets(id),
         credits INTEGER DEFAULT 1000,
         turns_used INTEGER DEFAULT 0,
+        fuel INTEGER DEFAULT 100,
+        max_fuel INTEGER DEFAULT 100,
+        current_turn INTEGER DEFAULT 0,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
+    `);
+
+    // Add columns if they don't exist (for existing tables)
+    await testQuery(`
+      ALTER TABLE games 
+      ADD COLUMN IF NOT EXISTS fuel INTEGER DEFAULT 100,
+      ADD COLUMN IF NOT EXISTS max_fuel INTEGER DEFAULT 100,
+      ADD COLUMN IF NOT EXISTS current_turn INTEGER DEFAULT 0;
     `);
 
     await testQuery(`
@@ -88,6 +99,21 @@ const setupTestTables = async () => {
         price_per_unit INTEGER NOT NULL,
         total_cost INTEGER NOT NULL,
         turn_number INTEGER NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+
+    // Create commodity_transactions table for enhanced commodity system
+    await testQuery(`
+      CREATE TABLE IF NOT EXISTS commodity_transactions (
+        id SERIAL PRIMARY KEY,
+        game_id INTEGER REFERENCES games(id),
+        planet_id INTEGER REFERENCES planets(id),
+        commodity_id INTEGER REFERENCES commodities(id),
+        transaction_type VARCHAR(20) NOT NULL, -- 'buy' or 'sell'
+        quantity INTEGER NOT NULL,
+        price_per_unit DECIMAL(10,2) NOT NULL,
+        total_cost DECIMAL(10,2) NOT NULL,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
     `);

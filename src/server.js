@@ -24,10 +24,10 @@ app.use(helmet({
 app.use(cors());
 app.use(express.json());
 
-// Rate limiting
+// Rate limiting - more permissive for development/gaming
 const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100 // limit each IP to 100 requests per windowMs
+  windowMs: 1 * 60 * 1000, // 1 minute
+  max: 1000 // limit each IP to 1000 requests per minute (very generous for gaming)
 });
 app.use(limiter);
 
@@ -62,6 +62,15 @@ app.get('/planets', GameController.getPlanets);
 app.get('/game/state', authenticateToken, GameController.getGameState);
 app.post('/game/start', authenticateToken, GameController.startGame);
 app.post('/game/travel', authenticateToken, GameController.travel);
+
+// Fuel system endpoints
+app.get('/game/fuel', authenticateToken, GameController.getFuelInfo);
+app.post('/game/fuel/buy', authenticateToken, GameController.buyFuel);
+app.get('/game/travel/cost/:planetId', authenticateToken, GameController.getTravelCost);
+
+// Enhanced planet endpoints
+app.get('/planets/:planetId/details', GameController.getPlanetDetails);
+app.get('/planets/:planetId/distance', authenticateToken, GameController.getPlanetDistanceInfo);
 
 app.get('/market/:planetId', MarketController.getMarketPrices);
 app.get('/cargo', authenticateToken, MarketController.getCargo);
@@ -127,6 +136,14 @@ const startServer = () => {
     console.log(`   GET  /game/state - Get game state (auth required)`);
     console.log(`   POST /game/start - Start new game (auth required)`);
     console.log(`   POST /game/travel - Travel to planet (auth required)`);
+    console.log(`   ⛽  Fuel System:`);
+    console.log(`   GET  /game/fuel - Get fuel info (auth required)`);
+    console.log(`   POST /game/fuel/buy - Buy fuel (auth required)`);
+    console.log(`   GET  /game/travel/cost/:id - Get travel cost (auth required)`);
+    console.log(`   🌍 Enhanced Planets:`);
+    console.log(`   GET  /planets/:id/details - Get planet details`);
+    console.log(`   GET  /planets/:id/distance - Get distance info (auth required)`);
+    console.log(`   📦 Trading:`);
     console.log(`   GET  /market/:planetId - Get market prices`);
     console.log(`   GET  /cargo - Get cargo inventory (auth required)`);
     console.log(`   POST /buy - Buy commodity (auth required)`);

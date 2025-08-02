@@ -1,9 +1,14 @@
 import { testQuery, getTestClient } from '../src/utils/testDatabase.js';
+import testPool from '../src/utils/testDatabase.js';
 
 // Test database setup and cleanup - ONLY affects sorstar_test database
 const setupTestDatabase = async () => {
   console.log('🧪 Setting up test database (sorstar_test)...');
-  // Clean up all tables for testing in TEST DATABASE ONLY
+  // Clean up all tables for testing in TEST DATABASE ONLY (order matters for foreign keys)
+  await testQuery('DELETE FROM commodity_transactions');
+  await testQuery('DELETE FROM futures_contracts');
+  await testQuery('DELETE FROM price_alerts');
+  await testQuery('DELETE FROM fuel_transactions');
   await testQuery('DELETE FROM transactions');
   await testQuery('DELETE FROM cargo');
   await testQuery('DELETE FROM games');
@@ -16,7 +21,11 @@ const setupTestDatabase = async () => {
 
 const teardownTestDatabase = async () => {
   console.log('🧹 Cleaning up test database (sorstar_test)...');
-  // Clean up after tests in TEST DATABASE ONLY
+  // Clean up after tests in TEST DATABASE ONLY (order matters for foreign keys)
+  await testQuery('DELETE FROM commodity_transactions');
+  await testQuery('DELETE FROM futures_contracts');
+  await testQuery('DELETE FROM price_alerts');
+  await testQuery('DELETE FROM fuel_transactions');
   await testQuery('DELETE FROM transactions');
   await testQuery('DELETE FROM cargo');
   await testQuery('DELETE FROM games');  
@@ -30,10 +39,17 @@ beforeAll(async () => {
 
 afterAll(async () => {
   await teardownTestDatabase();
+  // Close the database connection pool to prevent Jest from hanging
+  await testPool.end();
 });
 
 // Clean up after each test - TEST DATABASE ONLY
 afterEach(async () => {
+  // Delete in correct order to avoid foreign key violations
+  await testQuery('DELETE FROM commodity_transactions');
+  await testQuery('DELETE FROM futures_contracts');
+  await testQuery('DELETE FROM price_alerts');
+  await testQuery('DELETE FROM fuel_transactions');
   await testQuery('DELETE FROM transactions');
   await testQuery('DELETE FROM cargo');
   await testQuery('DELETE FROM games');

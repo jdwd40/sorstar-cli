@@ -75,6 +75,16 @@ export class GameManager {
     }
 
     async showMarket() {
+        // Use enhanced market view by default, with fallback to basic view
+        try {
+            await this.showEnhancedMarket();
+        } catch (error) {
+            console.warn('Enhanced market failed, falling back to basic market:', error.message);
+            await this.showBasicMarket();
+        }
+    }
+
+    async showBasicMarket() {
         if (!this.gameState) return;
         
         UI.showLoading('🌌 Loading market data...');
@@ -614,5 +624,237 @@ export class GameManager {
             UI.closeModal('confirmModal');
             UI.showMessage(`Fuel purchase failed: ${error.message}`, 'error');
         }
+    }
+
+    // Enhanced Commodity System Methods
+    async showEnhancedMarket() {
+        if (!this.gameState) return;
+        
+        UI.showLoading('🌌 Loading enhanced market data...');
+        
+        try {
+            // Get all required data concurrently
+            const [market, commodityCategories, planetCommodities] = await Promise.all([
+                this.api.getMarketPrices(this.gameState.currentPlanetId),
+                this.loadCommodityCategories(),
+                this.getPlanetCommodityInfo(this.gameState.currentPlanetId)
+            ]);
+
+            let html = `
+                <h3>💰 ${this.gameState.planetName} Market</h3>
+                <div style="margin-bottom: 15px; color: var(--secondary-text); padding: 10px; background: var(--accent-bg); border-radius: var(--radius);">
+                    📍 <strong>Location:</strong> ${this.gameState.planetName} ${UI.createPlanetTypeBadge(planetCommodities.planetType || 'Unknown')} | 
+                    💳 <strong>Credits:</strong> ${UI.formatCurrency(this.gameState.credits)} | 
+                    📦 <strong>Cargo:</strong> ${this.gameState.totalCargo || 0}/${this.gameState.cargoCapacity} units
+                </div>
+            `;
+            
+            // Add fuel trading section (preserve existing functionality)
+            if (this.gameState.fuel) {
+                const fuelPercentage = Math.round((this.gameState.fuel.currentFuel / this.gameState.fuel.maxFuel) * 100);
+                const fuelColor = fuelPercentage > 50 ? 'var(--success-color)' : 
+                                 fuelPercentage > 25 ? 'orange' : 'var(--error-color)';
+                
+                const fuelPrice = this.gameState.fuel.pricePerUnit || 50;
+                const maxFuelBuyable = Math.floor(this.gameState.credits / fuelPrice);
+                const fuelNeeded = this.gameState.fuel.maxFuel - this.gameState.fuel.currentFuel;
+                const maxFuelToBuy = Math.min(maxFuelBuyable, fuelNeeded);
+                const canBuyFuel = maxFuelToBuy > 0;
+                
+                html += `
+                    <div style="margin-bottom: 20px; padding: 15px; background: var(--primary-bg); border: 2px solid var(--accent-color); border-radius: var(--radius);">
+                        <h4>⛽ Fuel Station</h4>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 15px;">
+                            <div>
+                                <strong>Current Fuel:</strong> <span style="color: ${fuelColor};">${this.gameState.fuel.currentFuel}/${this.gameState.fuel.maxFuel} (${fuelPercentage}%)</span>
+                            </div>
+                            <div>
+                                <strong>Fuel Price:</strong> ${UI.formatCurrency(fuelPrice)} per unit
+                            </div>
+                        </div>
+                        <div style="display: flex; gap: 10px; align-items: center;">
+                            <button onclick="gameManager.openFuelPurchaseModal(${fuelPrice}, ${maxFuelToBuy})" 
+                                    ${canBuyFuel ? '' : 'disabled'}
+                                    title="${canBuyFuel ? `Max: ${maxFuelToBuy} units` : 'Tank full or insufficient credits'}">
+                                ⛽ Buy Fuel ${canBuyFuel ? `(Max: ${maxFuelToBuy})` : '(N/A)'}
+                            </button>
+                            ${fuelPercentage < 25 ? '<span style="color: var(--error-color); margin-left: 10px;">⚠️ Low Fuel Warning!</span>' : ''}
+                        </div>
+                    </div>
+                `;
+            }
+
+            // Add planet specialization info
+            if (planetCommodities.specialties && planetCommodities.specialties.length > 0) {
+                html += `
+                    <div style="margin-bottom: 20px; padding: 15px; background: var(--accent-bg); border-radius: var(--radius);">
+                        <h4>🌟 Planet Specializations</h4>
+                        <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                            ${planetCommodities.specialties.map(specialty => `
+                                <span style="background: var(--success-color); color: white; padding: 4px 8px; border-radius: 12px; font-size: 0.9em;">
+                                    ⭐ ${specialty}
+                                </span>
+                            `).join('')}
+                        </div>
+                    </div>
+                `;
+            }
+
+            // Group commodities by category and display
+            const groupedCommodities = this.groupCommoditiesByCategory(market, commodityCategories);
+            
+            for (const [categoryName, categoryData] of Object.entries(groupedCommodities)) {
+                if (categoryData.commodities.length === 0) continue;
+
+                // Add category header
+                html += UI.createCategoryHeader(categoryData.category);
+
+                // Add commodities table for this category
+                const headers = ['Commodity', 'Availability & Price', 'Stock & Status', 'Actions'];
+                const rows = categoryData.commodities.map(item => {
+                    const canAfford = Math.floor(this.gameState.credits / item.buy_price);
+                    const hasSpace = (this.gameState.cargoCapacity - (this.gameState.totalCargo || 0)) > 0;
+                    const buyDisabled = !hasSpace || canAfford === 0 || item.stock === 0;
+                    const maxBuyable = Math.min(canAfford, hasSpace ? this.gameState.cargoCapacity - (this.gameState.totalCargo || 0) : 0, item.stock);
+                    
+                    // Get enhanced commodity info from planet data
+                    const enhancedInfo = planetCommodities.commodities.find(c => c.name === item.commodity_name) || {};
+                    
+                    return [
+                        `<div><strong>${item.commodity_name}</strong></div>
+                         <div style="font-size: 0.9em; color: var(--secondary-text);">${enhancedInfo.description || 'Standard commodity'}</div>`,
+                        
+                        `<div>
+                            ${UI.getAvailabilityIndicator(enhancedInfo.availability || 'common')}
+                            ${UI.getPriceModifierDisplay(enhancedInfo)}
+                         </div>
+                         <div style="margin-top: 5px;">
+                            <span style="color: var(--error-color); font-weight: bold;">Buy: ${UI.formatCurrency(item.buy_price)}</span>
+                            <span style="color: var(--success-color); font-weight: bold; margin-left: 10px;">Sell: ${UI.formatCurrency(item.sell_price)}</span>
+                         </div>`,
+                        
+                        `<div>${item.stock} units available</div>
+                         <div style="margin-top: 5px;">${UI.getRarityIndicator(enhancedInfo)}</div>`,
+                        
+                        `<button onclick="gameManager.openBuyModal(${item.commodity_id}, '${item.commodity_name}', ${item.buy_price}, ${item.stock})" 
+                                ${buyDisabled ? 'disabled' : ''}
+                                title="${buyDisabled ? 'Cannot buy: insufficient credits/space' : `Max: ${maxBuyable} units`}">
+                            💰 Buy ${buyDisabled ? '(N/A)' : `(${maxBuyable})`}
+                        </button>`
+                    ];
+                });
+                
+                html += UI.createTable(headers, rows);
+            }
+            
+            document.getElementById('game-content').innerHTML = html;
+        } catch (error) {
+            console.error('Enhanced market error:', error);
+            // Fallback to basic market display
+            await this.showMarket();
+        }
+    }
+
+    async loadCommodityCategories() {
+        try {
+            const response = await this.api.getCommodityCategories();
+            return response.categories || [];
+        } catch (error) {
+            console.warn('Could not load commodity categories:', error.message);
+            return [];
+        }
+    }
+
+    async getPlanetCommodityInfo(planetId) {
+        try {
+            const response = await this.api.getCommoditiesByPlanet(planetId);
+            return response;
+        } catch (error) {
+            console.warn('Could not load planet commodity info:', error.message);
+            return {
+                planetId,
+                commodities: [],
+                specialties: [],
+                categorySummary: {}
+            };
+        }
+    }
+
+    groupCommoditiesByCategory(marketData, categories) {
+        const grouped = {};
+        
+        // Initialize groups
+        categories.forEach(category => {
+            grouped[category.name] = {
+                category: category,
+                commodities: []
+            };
+        });
+
+        // Group commodities
+        marketData.forEach(item => {
+            const category = this.findCommodityCategory(item.commodity_name, categories);
+            if (category && grouped[category.name]) {
+                grouped[category.name].commodities.push(item);
+            } else {
+                // Create "Other" category for uncategorized items
+                if (!grouped['Other']) {
+                    grouped['Other'] = {
+                        category: { name: 'Other', icon: '📦', color: '#666', description: 'Miscellaneous items' },
+                        commodities: []
+                    };
+                }
+                grouped['Other'].commodities.push(item);
+            }
+        });
+
+        return grouped;
+    }
+
+    findCommodityCategory(commodityName, categories) {
+        return categories.find(category => 
+            category.commodities && category.commodities.includes(commodityName)
+        );
+    }
+
+    calculateCategoryStatistics(planetCommodities) {
+        const stats = {};
+        
+        if (planetCommodities.categorySummary) {
+            return planetCommodities.categorySummary;
+        }
+
+        // Calculate from commodities if categorySummary not available
+        const categories = {};
+        planetCommodities.commodities.forEach(commodity => {
+            const categoryName = commodity.category || 'Other';
+            if (!categories[categoryName]) {
+                categories[categoryName] = {
+                    count: 0,
+                    totalPrice: 0,
+                    availabilities: []
+                };
+            }
+            categories[categoryName].count++;
+            categories[categoryName].totalPrice += commodity.currentPrice || commodity.basePrice || 0;
+            categories[categoryName].availabilities.push(commodity.availability || 'common');
+        });
+
+        // Calculate statistics
+        Object.entries(categories).forEach(([categoryName, data]) => {
+            stats[categoryName] = {
+                count: data.count,
+                avgPrice: Math.round(data.totalPrice / data.count),
+                availability: data.availabilities[0] || 'common' // Simplified
+            };
+        });
+
+        return stats;
+    }
+
+    filterCommoditiesByAvailability(commodities, targetAvailability) {
+        return commodities.filter(commodity => 
+            commodity.availability === targetAvailability
+        );
     }
 }

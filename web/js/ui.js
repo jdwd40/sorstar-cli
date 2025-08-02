@@ -201,4 +201,120 @@ export class UI {
             }
         });
     }
+
+    // Commodity Category Enhancement Methods
+    static createCategoryHeader(category) {
+        return `
+            <div class="commodity-category-header" style="background-color: ${category.color || '#666'}; border-radius: var(--radius); padding: 10px; margin: 15px 0 10px 0;">
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <span style="font-size: 1.5em;">${category.icon || '📦'}</span>
+                    <div>
+                        <h4 style="margin: 0; color: white;">${category.name}</h4>
+                        <div style="font-size: 0.9em; opacity: 0.9; color: white;">${category.description || ''}</div>
+                        <div style="font-size: 0.8em; opacity: 0.8; color: white;">${category.totalTypes || 0} types available</div>
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+
+    static getCategoryIcon(category) {
+        return `
+            <span class="category-icon" title="${category.name}">
+                ${category.icon || '📦'} ${category.name}
+            </span>
+        `;
+    }
+
+    static getAvailabilityIndicator(availability) {
+        const indicators = {
+            'abundant': { icon: '🟢', text: 'Abundant', color: 'var(--success-color)' },
+            'common': { icon: '🟡', text: 'Common', color: '#FFA500' },
+            'limited': { icon: '🟠', text: 'Limited', color: '#FF6347' },
+            'rare': { icon: '🔴', text: 'Rare', color: 'var(--error-color)' },
+            'scarce': { icon: '🔴', text: 'Scarce', color: '#8B0000' }
+        };
+
+        const indicator = indicators[availability] || indicators['common'];
+        return `
+            <span style="color: ${indicator.color}; font-weight: bold;">
+                ${indicator.icon} ${indicator.text}
+            </span>
+        `;
+    }
+
+    static getPriceModifierDisplay(commodity) {
+        const modifier = commodity.priceModifier || 0;
+        const percentage = Math.round(modifier * 100);
+        
+        if (percentage === 0) {
+            return '<span style="color: #666;">🔸 Market Price</span>';
+        }
+        
+        const isPositive = percentage > 0;
+        const color = isPositive ? 'var(--error-color)' : 'var(--success-color)';
+        const arrow = isPositive ? '🔺' : '🔽';
+        const sign = isPositive ? '+' : '';
+        
+        return `
+            <span style="color: ${color}; font-weight: bold;">
+                ${arrow} ${sign}${percentage}%
+            </span>
+        `;
+    }
+
+    static getRarityIndicator(commodity) {
+        const stock = commodity.stock || 0;
+        const availability = commodity.availability || 'common';
+        
+        let indicator;
+        if (availability === 'abundant' || stock > 200) {
+            indicator = { icon: '🟢', text: 'Common' };
+        } else if (availability === 'rare' || stock < 20) {
+            indicator = { icon: '🔴', text: 'Rare' };
+        } else if (availability === 'limited' || stock < 50) {
+            indicator = { icon: '🟠', text: 'Limited' };
+        } else {
+            indicator = { icon: '🟡', text: 'Available' };
+        }
+        
+        return `${indicator.icon} ${indicator.text}`;
+    }
+
+    static createPlanetTypeBadge(planetType) {
+        const typeStyles = {
+            'Trade Hub': { icon: '🏛️', color: '#4169E1' },
+            'Industrial': { icon: '🏭', color: '#8B4513' },
+            'Agricultural': { icon: '🌾', color: '#228B22' },
+            'Mining': { icon: '⛏️', color: '#B8860B' },
+            'Research': { icon: '🔬', color: '#9370DB' },
+            'Energy': { icon: '⚡', color: '#FFD700' },
+            'Forest': { icon: '🌲', color: '#228B22' },
+            'Desert': { icon: '🏜️', color: '#DEB887' },
+            'Ocean': { icon: '🌊', color: '#1E90FF' },
+            'City': { icon: '🏙️', color: '#696969' }
+        };
+
+        const style = typeStyles[planetType] || { icon: '🌍', color: '#666' };
+        
+        return `
+            <span class="planet-type-badge" style="
+                background-color: ${style.color}; 
+                color: white; 
+                padding: 4px 8px; 
+                border-radius: 12px; 
+                font-size: 0.8em; 
+                font-weight: bold;
+                display: inline-flex;
+                align-items: center;
+                gap: 4px;
+            ">
+                ${style.icon} ${planetType}
+            </span>
+        `;
+    }
+
+    static getCommodityCategory(commodity) {
+        return commodity.category || 'Uncategorized';
+    }
 }

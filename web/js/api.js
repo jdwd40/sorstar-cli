@@ -1,7 +1,17 @@
 // API Communication Module
 export class ApiClient {
-    constructor(baseUrl = 'http://localhost:3000') {
-        this.baseUrl = baseUrl;
+    constructor(baseUrl = null) {
+        // Auto-detect API base URL based on environment
+        if (!baseUrl) {
+            if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+                this.baseUrl = 'http://localhost:3010';
+            } else {
+                // Use same domain with port 3010 for production
+                this.baseUrl = `${window.location.protocol}//${window.location.hostname}:3010`;
+            }
+        } else {
+            this.baseUrl = baseUrl;
+        }
         this.authToken = null;
     }
 

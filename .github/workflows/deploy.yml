@@ -43,12 +43,16 @@ jobs:
           mkdir -p /home/jd/sorstar
           mkdir -p /var/www/jdwd40.com/html/sorstar
           
-          # Backup current deployment
+          # Backup current deployment and preserve .env
           if [ -d "/home/jd/sorstar_backup" ]; then
             rm -rf /home/jd/sorstar_backup
           fi
           if [ -d "/home/jd/sorstar" ]; then
             cp -r /home/jd/sorstar /home/jd/sorstar_backup
+          fi
+          # Backup .env file if it exists
+          if [ -f "/home/jd/sorstar/.env" ]; then
+            cp /home/jd/sorstar/.env /tmp/sorstar.env.backup
           fi
           
     - name: Copy files to VPS
@@ -72,6 +76,12 @@ jobs:
         script: |
           cd /home/jd/sorstar
           
+          # Restore .env file if backup exists
+          if [ -f "/tmp/sorstar.env.backup" ]; then
+            cp /tmp/sorstar.env.backup /home/jd/sorstar/.env
+            rm /tmp/sorstar.env.backup
+          fi
+          
           # Install backend dependencies
           npm install
           
@@ -79,7 +89,7 @@ jobs:
           cp -r dist/* /var/www/jdwd40.com/html/sorstar/
           
           # Start backend with PM2 on port 3010
-          PORT=3010 pm2 start 'npm run server' --name sorstar
+          PORT=3010 pm2 start 'npm run server' --name sorstar --update-env
           pm2 save
           
           # Restart nginx to pick up any config changes

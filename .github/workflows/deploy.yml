@@ -32,7 +32,7 @@ jobs:
       with:
         host: ${{ secrets.VPS_HOST }}
         username: ${{ secrets.VPS_USERNAME }}
-        key: ${{ secrets.ssh_private_key }}
+        key: ${{ secrets.SSH_PRIVATE_KEY }}
         port: ${{ secrets.VPS_PORT }}
         script: |
           # Stop existing sorstar service if running
@@ -56,7 +56,7 @@ jobs:
       with:
         host: ${{ secrets.VPS_HOST }}
         username: ${{ secrets.VPS_USERNAME }}
-        key: ${{ secrets.ssh_private_key }}
+        key: ${{ secrets.SSH_PRIVATE_KEY }}
         port: ${{ secrets.VPS_PORT }}
         source: "."
         target: "/home/jd/sorstar"
@@ -67,7 +67,7 @@ jobs:
       with:
         host: ${{ secrets.VPS_HOST }}
         username: ${{ secrets.VPS_USERNAME }}
-        key: ${{ secrets.ssh_private_key }}
+        key: ${{ secrets.SSH_PRIVATE_KEY }}
         port: ${{ secrets.VPS_PORT }}
         script: |
           cd /home/jd/sorstar

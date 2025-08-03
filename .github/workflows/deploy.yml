@@ -79,7 +79,7 @@ jobs:
           cp -r dist/* /var/www/jdwd40.com/html/sorstar/
           
           # Start backend with PM2 on port 3010
-          PORT=3010 pm2 start server.js --name sorstar
+          PORT=3010 pm2 start 'npm run server' --name sorstar
           pm2 save
           
           # Restart nginx to pick up any config changes

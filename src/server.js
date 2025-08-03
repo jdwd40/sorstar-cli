@@ -77,6 +77,10 @@ app.get('/cargo', authenticateToken, MarketController.getCargo);
 app.post('/buy', authenticateToken, MarketController.buyCommodity);
 app.post('/sell', authenticateToken, MarketController.sellCommodity);
 
+// Enhanced market endpoints
+app.get('/planets/:planetId/commodities', MarketController.getPlanetCommodities);
+app.get('/commodities/categories', MarketController.getCommodityCategories);
+
 app.get('/stats', authenticateToken, GameController.getStats);
 
 // Health check endpoint

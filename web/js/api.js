@@ -6,8 +6,8 @@ export class ApiClient {
             if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
                 this.baseUrl = 'http://localhost:3010';
             } else {
-                // Use HTTP for API server on port 3010 (no SSL configured on this port)
-                this.baseUrl = `http://${window.location.hostname}:3010`;
+                // Use nginx reverse proxy for production (avoids mixed content issues)
+                this.baseUrl = `${window.location.protocol}//${window.location.hostname}/sorstar-api`;
             }
         } else {
             this.baseUrl = baseUrl;

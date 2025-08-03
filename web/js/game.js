@@ -589,7 +589,7 @@ export class GameManager {
             let html = `
                 <h3>💰 ${this.gameState.planetName} Market</h3>
                 <div style="margin-bottom: 15px; color: var(--secondary-text); padding: 10px; background: var(--accent-bg); border-radius: var(--radius);">
-                    📍 <strong>Location:</strong> ${this.gameState.planetName} ${UI.createPlanetTypeBadge(planetCommodities.planetType || 'Unknown')} | 
+                    📍 <strong>Location:</strong> ${this.gameState.planetName} | 
                     💳 <strong>Credits:</strong> ${UI.formatCurrency(this.gameState.credits)} | 
                     📦 <strong>Cargo:</strong> ${this.gameState.totalCargo || 0}/${this.gameState.cargoCapacity} units
                 </div>
@@ -631,6 +631,8 @@ export class GameManager {
             }
 
             // Add planet specialization info
+            // Skip specialties section for now since API format changed
+            /*
             if (planetCommodities.specialties && planetCommodities.specialties.length > 0) {
                 html += `
                     <div style="margin-bottom: 20px; padding: 15px; background: var(--accent-bg); border-radius: var(--radius);">
@@ -645,6 +647,7 @@ export class GameManager {
                     </div>
                 `;
             }
+            */
 
             // Group commodities by category and display
             const groupedCommodities = this.groupCommoditiesByCategory(market, commodityCategories);
@@ -664,7 +667,7 @@ export class GameManager {
                     const maxBuyable = Math.min(canAfford, hasSpace ? this.gameState.cargoCapacity - (this.gameState.totalCargo || 0) : 0, item.stock);
                     
                     // Get enhanced commodity info from planet data
-                    const enhancedInfo = planetCommodities.commodities.find(c => c.name === item.commodity_name) || {};
+                    const enhancedInfo = (planetCommodities || []).find(c => c.commodity_name === item.commodity_name) || {};
                     
                     return [
                         `<div><strong>${item.commodity_name}</strong></div>
@@ -766,13 +769,9 @@ export class GameManager {
     calculateCategoryStatistics(planetCommodities) {
         const stats = {};
         
-        if (planetCommodities.categorySummary) {
-            return planetCommodities.categorySummary;
-        }
-
-        // Calculate from commodities if categorySummary not available
+        // Calculate from commodities array (API returns array directly)
         const categories = {};
-        planetCommodities.commodities.forEach(commodity => {
+        (planetCommodities || []).forEach(commodity => {
             const categoryName = commodity.category || 'Other';
             if (!categories[categoryName]) {
                 categories[categoryName] = {
